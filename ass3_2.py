@@ -87,7 +87,13 @@ def smoothAdd1(pc,data,tagset):
         pwt={(w,t) : ((getprob(pc[0],(w,t))+1)/(getprob(pc[1],t)+len(words)*len(tagset))) for w in words for t in tagset }
         return pwt
 
+def baumwelch():
 
+        return ""
+
+def viterbi():
+
+        return ""
 
 #-----------------------------initialization-------------------------------
 
@@ -112,3 +118,7 @@ pp=get_parametres_superv(dataT)
 p_t=smoothEM(pp[1],[t for (_,t) in dataH],dataSwords) # probabilities p_t1,p_t2,p_t3
 p_wt=smoothAdd1(pp[2],[t for (_,t) in dataT],dataSwords)
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
+
+
+
+
