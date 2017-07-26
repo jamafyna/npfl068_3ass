@@ -90,6 +90,8 @@ class Pwt:
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
+        print('ahoj')
+        print(getprob(self.wt_bigram_counts,(w,t))+1," ",getprob(self.t_unigram_counts,t),  " ",self.len_wordset," ",self.len_tagset )
         return ((getprob(self.wt_bigram_counts,(w,t))+1)/(getprob(self.t_unigram_counts,t)+self.len_wordset*self.len_tagset))              
 
 
@@ -106,10 +108,9 @@ def baumwelch():
 
 #def getword(word,)
 
-def viterbi(text,tagset):
+def viterbi(text,tagset,wordset):
         V={}
         path={}
-        wordset={"todo"}
         isOOV=false # says if the proceeded word is out-of-vocabulary
         for k in range(1,len(text)+1):
                 isOOV=false
@@ -153,7 +154,7 @@ p_t=smoothEM(pp[1],[t for (_,t) in dataH],[t for (_,t) in dataT]) # probabilitie
 #p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT])) #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 pwt=Pwt(pp[2][0],pp[2][1],len(wordsetT),len(tagsetT))
 
-
+#viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
 
 
