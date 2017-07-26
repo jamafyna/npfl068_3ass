@@ -12,7 +12,8 @@ sout=sys.stdout
 
 
 
-
+STARTw="<s>"
+STARTt="<s>"
 
 def getprob(p,h):
         """ Returns a corresponding value from the given tuple if an item is in the tuple, otherwise returns zero."""
@@ -90,7 +91,6 @@ class Pwt:
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
-        print('ahoj')
         print(getprob(self.wt_bigram_counts,(w,t))+1," ",getprob(self.t_unigram_counts,t),  " ",self.len_wordset," ",self.len_tagset )
         return ((getprob(self.wt_bigram_counts,(w,t))+1)/(getprob(self.t_unigram_counts,t)+self.len_wordset*self.len_tagset))              
 
@@ -112,14 +112,19 @@ def viterbi(text,tagset,wordset):
         V={}
         path={}
         isOOV=false # says if the proceeded word is out-of-vocabulary
+        s0=(STARTt,STARTt)
+        si=(STARTt,STARTt)
+
         for k in range(1,len(text)+1):
                 isOOV=false
                 w=text[k]
                 if w not in wordset: 
                     isOOV=true
                 for t1 in tagset: # pro k = 0 se místo tagset vrací set([''])
+                    if t1==STARTt: continue
                     for t2 in tagset: #pro lib. k je vždy tagset
-                        V[k,]
+                         #?? proc nejde pouzit proste hledany_tag=argmax p_wt(w,t)*p_tt(t,t_i-1,t_i-2) ??? To ale neni Viterbi, ne?
+
 
         return ""
 
@@ -134,9 +139,9 @@ else: supervised=False
 # ------ data preparation ---------
 
 data=[l.split('/',1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
-dataT=data[:60000]
-dataH=data[-60000:-40000]
-dataS=data[-40000:]
+dataT=[(STARTw,STARTt),(STARTw,STARTt)]+data[:60000]
+dataH=[(STARTw,STARTt),(STARTw,STARTt)]+data[-60000:-40000]
+dataS=[(STARTw,STARTt),(STARTw,STARTt)]+data[-40000:]
 data=[] # for gc
 
 tagsetT=set([t for (_,t) in dataT])
