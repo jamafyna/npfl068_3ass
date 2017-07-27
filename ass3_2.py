@@ -114,6 +114,7 @@ def viterbi(text,tagset,wordset):
         isOOV=false # says if the proceeded word is out-of-vocabulary
         s0=(STARTt,STARTt)
         si=(STARTt,STARTt)
+        V[0,s0]=1
 
         for k in range(1,len(text)+1):
                 isOOV=false
