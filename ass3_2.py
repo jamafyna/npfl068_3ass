@@ -132,24 +132,25 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         isOOV=false # says if the proceeded word is out-of-vocabulary
         s0=(STARTt,STARTt)
         si=(STARTt,STARTt)
-        ti=''
-        V[0,STARTt,STARTt]=1
+        t=''
+        V[-1,STARTt,STARTt]=1
         while STARTt in tagset: # we dont want to have this tag in the middle of the tag sequence,  for sure while instead of only remove
                  tagset.remove(STARTt) 
         w=text[0]
-        for t1 in tagset:
-            V[1,STARTt,t1]=Ptt.get_ptt(t1,STARTt,STARTt)*Pwt.get_pwt(w,t1)
+        for t in tagset:
+            V[0,STARTt,t]=Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t)
 
         for k in range(1,len(text)-1):
                 isOOV=false
                 w=text[k]
                 if w not in wordset: 
                     isOOV=true
-                for t1 in tagset: 
-                    if t1==STARTt: continue
-                    for t2 in tagset:
-                        
-                        #V[k,]
+                for t in tagset: 
+                   # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t) chci něco v tomto smyslu, ale toto úplně nefunguje
+                        # mám V[k-1,ti,tj]p
+                        # chci V[k,tj,t]=max(V[k-1,ti,tj]*Ptt.get_ptt(t,ti,tj))*Pwt.get_pwt(w,t) přes všechna ti,tj, která jsou v V[k-1]
+                        #V[k,,t]
+                        # a ještě path
 
 
 
