@@ -76,6 +76,14 @@ def smoothEM(p,heldout,traindata):
         pt={(i,j,k) : (l[0]*p[0]+l[1]*getprob(p[1],k)+l[2]*getprob(p[2],(j,k))+l[3]*getprob(p[3],(i,j,k))) for (i,j,k) in tri}
 #todo: zvazit, jestli nechci pak pouzit vsechny tagy jak z heldout, tak z training
         return pt
+
+def smoothAdd1(pc,data,tagset):
+        """
+        Do smoothing by Adding 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
+        """
+        pwt={(w,t) : ((getprob(pc[0],(w,t))+1)/(getprob(pc[1],t)+len(wordset)*len(tagset))) for w in words for t in tagset }
+        return pwt
+
 class Pwt:
     wt_bigram_counts=[]
     t_unigram_counts=[]    
@@ -91,42 +99,69 @@ class Pwt:
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
+        # DEBUG:
         print(getprob(self.wt_bigram_counts,(w,t))+1," ",getprob(self.t_unigram_counts,t),  " ",self.len_wordset," ",self.len_tagset )
         return ((getprob(self.wt_bigram_counts,(w,t))+1)/(getprob(self.t_unigram_counts,t)+self.len_wordset*self.len_tagset))              
 
-
-def smoothAdd1(pc,data,tagset):
+class Ptt:
         """
-        Do smoothing by Adding 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
+        Class for getting smoothed arc probability
         """
-        pwt={(w,t) : ((getprob(pc[0],(w,t))+1)/(getprob(pc[1],t)+len(wordset)*len(tagset))) for w in words for t in tagset }
-        return pwt
+        #TODO: ČASEM možná vylepšit na nepamatování si celé tabulky, ale dynam.počítání
+        p_t=[]
+        
+        def __init__(self, pp, heldout, train):
+            self.p_t=smoothEM(pp,heldout,train) # probabilities p_t1,p_t2,p_t3
+        
+        def get_ptt(self,t1,t2,t3):
+            """
+            Returns smoothed p(t3|t1,t2).
+            """
+            return self.p_t[t3,t1,t2]  # TODO: Možná udělat časem dynamicky 
 
 def baumwelch():
 
         return ""
 
 #def getword(word,)
+def viterbi(text,tagset,wordset,Pwt,Ptt):
 
-def viterbi(text,tagset,wordset):
+        if len(text)==0: return []
         V={}
         path={}
         isOOV=false # says if the proceeded word is out-of-vocabulary
         s0=(STARTt,STARTt)
         si=(STARTt,STARTt)
-        V[0,s0]=1
+        ti=''
+        V[0,STARTt,STARTt]=1
+        while STARTt in tagset: # we dont want to have this tag in the middle of the tag sequence,  for sure while instead of only remove
+                 tagset.remove(STARTt) 
+        w=text[0]
+        for t1 in tagset:
+            V[1,STARTt,t1]=Ptt.get_ptt(t1,STARTt,STARTt)*Pwt.get_pwt(w,t1)
 
-        for k in range(1,len(text)+1):
+        for k in range(1,len(text)-1):
                 isOOV=false
                 w=text[k]
                 if w not in wordset: 
                     isOOV=true
-                for t1 in tagset: # pro k = 0 se místo tagset vrací set([''])
+                for t1 in tagset: 
                     if t1==STARTt: continue
-                    for t2 in tagset: #pro lib. k je vždy tagset
+                    for t2 in tagset:
+                        
+                        #V[k,]
+
+
+
                         print("todo")
                          #?? proc nejde pouzit proste hledany_tag=argmax p_wt(w,t)*p_tt(t,t_i-1,t_i-2) ??? To ale neni Viterbi, ne?
                         # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
+
+
+        tagset=[STARTt]+tagset #to be the same as at start
+
+
+
 
 
         return ""
@@ -161,7 +196,7 @@ p_t=smoothEM(pp[1],[t for (_,t) in dataH],[t for (_,t) in dataT]) # probabilitie
 #todo: toto neni sikovne, zbytecne zabira moc pameti, lepsi neco typu getter a vzdy spocist
 #p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT])) #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 pwt=Pwt(pp[2][0],pp[2][1],len(wordsetT),len(tagsetT))
-
+pt=Ptt(pp[1],[t for (_,t) in dataH],[t for (_,t) in dataT])  
 #viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
 
