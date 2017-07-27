@@ -5,6 +5,7 @@ import collections as col
 import math
 import random
 import datetime
+import warnings
 import itertools
 from optparse import OptionParser
 from sys import stdin as sin
@@ -150,66 +151,64 @@ class Ptt:
 def viterbi(text,tagset,wordset,Pwt,Ptt):
 
         if len(text)==0: return []
-        V={}
-        path={}
-        isOOV=False # says if the proceeded word is out-of-vocabulary
-        t=''
-        #V[-1,STARTt,STARTt]=1
+        isOOV=False # indicates if proceeded word is out-of-vocabulary
+        tagsetcontainsSTART=False
         while STARTt in tagset: 
+            tagset.remove(STARTt)
+            tagsetcontainsSTART=True 
             # we dont want to have this tag in the middle of the tag sequence,  
-            #for sure while instead of only remove
-                 tagset.remove(STARTt) 
-        w=text[0]
-        V[0]={} # V has following format: V[time][state]=(probability,path)
-        V[0][STARTt,STARTt]=(1,[STARTt])
-        #V[1]={}
-        #for t in tagset:
-        #    V[1][STARTt,t]=(Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t),[t])
-        for k in range(1,len(text)):
-                V[k]={}
+            # for sure while instead of only remove
+        if text[0]!=STARTw or text[1]!=STARTw:
+            warnings.warn("inconsistend data, start tokens",Warning)
+       
+        V={}    # structure for remember viterbi computation
+                # V[time][state]=(probability,path) where state==(tag1,tag2)
+        path={} # the best path to some state
+        V[0]={} 
+        V[1]={}
+        # --- initialisation, starting state
+        V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
+        # --- finding the best way
+        for k in range(2,len(text)):
                 isOOV=False
                 w=text[k]
+                now=k%2        # k modulo 2 instead of k; it is sufficient to remember 
+                prev=(now+1)%2 # instead of k-1;          only actual and previous time
+                V[now]={}
                 if w not in wordset:
                     print("out-of-vocabulary: ",w) 
                     isOOV=True
                 for t in tagset:
                     bests={}
                     bestpath=[]
-                    m=0 # maximum
-                    for (i,j) in V[k-1]:
-                        value=V[k-1][i,j][0]*Ptt.get_ptt(t,i,j)
-                        if value>m: 
-                            #(bests[0], bests[1], m, bestpath)=(i, j, value, V[k-1][i,j][1]
+                    maxprob=0
+                    for (i,j) in V[prev]:
+                        value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
+                       # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
+                        if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
-                            m=value
-                            bestpath=V[k-1][i,j][1]
-                    V[k][bests[1],t]=(m*Pwt.get_pwt(w,t,isOOV),bestpath+[t]) 
-#když si budu šikovně pamatovat cestu, tak si nepotřebuji pamatovat všech k stavů, ale jen vždy předchozí, tedy místo V[k,...] pouze V[0/1,...]
-                   # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t,isOOV) chci něco v tomto smyslu, ale toto úplně nefunguje
-                        # mám V[k-1,ti,tj]p
-                        # chci V[k,tj,t]=max(V[k-1,ti,tj]*Ptt.get_ptt(t,ti,tj))*Pwt.get_pwt(w,t,isOOV) přes všechna ti,tj, která jsou v V[k-1]
-                        #V[k,,t]
-                        # a ještě path
-
-        tagset.add(STARTt)  # to be the same as at start
-        m=0
-        ends={}
-        for s in V[len(text)-1]:
-                if V[len(text)-1][s][0]>m:
-                    m=V[len(text)-1][s][0]
+                            maxprob=value
+                            bestpath=V[prev][i,j][1]
+                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
+        if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
+        # --- final search the best tag sequence
+        maxprob=0
+        ends={}              # the best end state
+        last=(len(text)-1)%2 # instead of (len(text)-1)
+        for s in V[now]:
+                if V[now][s][0]>=maxprob:
+                    maxprob=V[now][s][0]
                     ends=s
-        return list(zip(V[len(text)-1][ends][1],text))
-
+        try:
+            return V[now][ends][1]
+        except:
+            print("last:",last,"ends:",ends)
+            tagged=V[last][ends]
 
 # -----------------------------initialization-------------------------------
 
 # ----- parsing arguments ---------
-# if len(sys.argv) != 3 or (sys.argv[2][0] != "U" and sys.argv[2][0] != "S"):
-#     sys.exit(
-#         'Not correct arguments, please run with 2 arguments: input-file,\
-#     number (1=task with words, 2=task with tags), count of resulting classes (1 for full hierarchy).')
-# open text file in text read mode
 parser = OptionParser(usage="usage: %prog [options] filename count")
 parser.add_option("-s", "--supervised",
                   action="store_true", dest="supervised", default=False,
@@ -227,8 +226,8 @@ supervised = options.supervised
 data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:60000]
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]
-# dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:] # the right testing data
-dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40:] # testingdata for debuging
+dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:] # the right testing data
+#dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-39:] # testingdata for debuging
 data = []  # for gc
 
 tagsetT = set([t for (_, t) in dataT])
@@ -251,5 +250,5 @@ pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
 tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt)
-for p in tagged: print(p)
+#for p in tagged: print(p)
 
