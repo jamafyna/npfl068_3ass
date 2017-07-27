@@ -200,7 +200,6 @@ parser.add_option("-u", "--unsupervised",
                   action="store_false", dest="supervised", default=False,
                   help="Use unsupervised method (the default option)")
 (options, args) = parser.parse_args()
-tags = options.tags
 file_name = args[0]
 f = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
