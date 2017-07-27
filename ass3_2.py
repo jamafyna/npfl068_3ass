@@ -153,8 +153,6 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         V={}
         path={}
         isOOV=False # says if the proceeded word is out-of-vocabulary
-        s0=(STARTt,STARTt)
-        si=(STARTt,STARTt)
         t=''
         #V[-1,STARTt,STARTt]=1
         while STARTt in tagset: 
@@ -163,14 +161,16 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                  tagset.remove(STARTt) 
         w=text[0]
         V[0]={} # V has following format: V[time][state]=(probability,path)
-        for t in tagset:
-            V[0][STARTt,t]=(Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t),[t])
-
+        V[0][STARTt,STARTt]=(1,[STARTt])
+        #V[1]={}
+        #for t in tagset:
+        #    V[1][STARTt,t]=(Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t),[t])
         for k in range(1,len(text)):
                 V[k]={}
                 isOOV=False
                 w=text[k]
-                if w not in wordset: 
+                if w not in wordset:
+                    print("out-of-vocabulary: ",w) 
                     isOOV=True
                 for t in tagset:
                     bests={}
@@ -192,8 +192,6 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                         #V[k,,t]
                         # a ještě path
 
-
-        
         tagset.add(STARTt)  # to be the same as at start
         m=0
         ends={}
@@ -201,7 +199,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 if V[len(text)-1][s][0]>m:
                     m=V[len(text)-1][s][0]
                     ends=s
-        return V[len(text)-1][ends][1]
+        return list(zip(V[len(text)-1][ends][1],text))
 
 
 # -----------------------------initialization-------------------------------
@@ -252,5 +250,6 @@ pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
-print(viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt))
+tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt)
+for p in tagged: print(p)
 
