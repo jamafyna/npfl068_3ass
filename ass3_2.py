@@ -120,9 +120,9 @@ class Pwt:
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
-        # DEBUG:
-        print(getprob(self.wt_bigram_counts, (w, t)) + 1, " ", getprob(self.t_unigram_counts, t), " ", self.len_wordset,
-              " ", self.len_tagset)
+        #print("DEBUG: in get_pwt: w: ",w,", t:",t)
+        #print(getprob(self.wt_bigram_counts, (w, t)) + 1, " ", getprob(self.t_unigram_counts, t), " ", self.len_wordset,
+         #     " ", self.len_tagset)
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
         return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
             getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
@@ -152,7 +152,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         if len(text)==0: return []
         V={}
         path={}
-        isOOV=false # says if the proceeded word is out-of-vocabulary
+        isOOV=False # says if the proceeded word is out-of-vocabulary
         s0=(STARTt,STARTt)
         si=(STARTt,STARTt)
         t=''
@@ -166,20 +166,24 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         for t in tagset:
             V[0][STARTt,t]=(Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t),[t])
 
-        for k in range(1,len(text)-1):
-                isOOV=false
+        for k in range(1,len(text)):
+                V[k]={}
+                isOOV=False
                 w=text[k]
                 if w not in wordset: 
-                    isOOV=true
+                    isOOV=True
                 for t in tagset:
-                    bests=''
-                    bestpath=''
+                    bests={}
+                    bestpath=[]
                     m=0 # maximum
                     for (i,j) in V[k-1]:
                         value=V[k-1][i,j][0]*Ptt.get_ptt(t,i,j)
                         if value>m: 
-                            (bests[0], bests[1], m, bestpath)==(i, j, value, V[k-1][i,j][1]
-)
+                            #(bests[0], bests[1], m, bestpath)=(i, j, value, V[k-1][i,j][1]
+                            bests[0]=i
+                            bests[1]=j
+                            m=value
+                            bestpath=V[k-1][i,j][1]
                     V[k][bests[1],t]=(m*Pwt.get_pwt(w,t,isOOV),bestpath+[t]) 
 #když si budu šikovně pamatovat cestu, tak si nepotřebuji pamatovat všech k stavů, ale jen vždy předchozí, tedy místo V[k,...] pouze V[0/1,...]
                    # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t,isOOV) chci něco v tomto smyslu, ale toto úplně nefunguje
@@ -189,11 +193,15 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                         # a ještě path
 
 
-
-        print("todo: the end")
-        tagset = [STARTt] + tagset  # to be the same as at start
-
-        return ""
+        
+        tagset.add(STARTt)  # to be the same as at start
+        m=0
+        ends={}
+        for s in V[len(text)-1]:
+                if V[len(text)-1][s][0]>m:
+                    m=V[len(text)-1][s][0]
+                    ends=s
+        return V[len(text)-1][ends][1]
 
 
 # -----------------------------initialization-------------------------------
@@ -215,16 +223,14 @@ parser.add_option("-u", "--unsupervised",
 file_name = args[0]
 f = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
-# if sys.argv[2][0] == 'S':
-#     supervised = True
-# else:
-#     supervised = False
+
 # ------ data preparation ---------
 
 data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:60000]
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]
-dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]
+# dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:] # the right testing data
+dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40:] # testingdata for debuging
 data = []  # for gc
 
 tagsetT = set([t for (_, t) in dataT])
@@ -238,7 +244,7 @@ if supervised:
 else:
     print("todo")
     sys.exit()
-p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
+#p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
 # todo: toto neni sikovne, zbytecne zabira moc pameti, lepsi neco typu getter a vzdy spocist
 # p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 # #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
@@ -246,3 +252,5 @@ pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
+print(viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt))
+
