@@ -86,11 +86,12 @@ def smoothEM(p, heldout, traindata):
     l = EMalgorithm(heldout, p)  # get lambdas
     tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
     # TODO: TO JE DOCELA DIVNE, ZE TU POUZIVAM TRIGRAMY MISTO VSECH MOZNYCH TROJIC (pozor, stejne tak v EMiter) , tady to nedává smysl, TODO: OVERIT, ZE MAM ZDE POUZIT TRAINING DATA
+    ttrainset=set(traindata) #todo:pouzit ta globalni, pokud takto spravne
     pt_em = {
         (i, j, k): (
             l[0] * p[0] + l[1] * getprob(p[1], k) + l[2] * getprob(p[2], (j, k)) + l[3] * getprob(p[3], (i, j, k)))
-        for (i, j, k) in tri}
-    # todo: zvazit, jestli nechci pak pouzit vsechny tagy jak z heldout, tak z training
+        #for (i, j, k) in tri}
+        for i in ttrainset for j in ttrainset for k in ttrainset}
     return pt_em
 
 
@@ -115,13 +116,14 @@ class Pwt:
         self.len_wordset = wlen
         self.len_tagset = tlen
 
-    def get_pwt(self, w, t):
+    def get_pwt(self, w, t, isOOV=False):
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
         # DEBUG:
         print(getprob(self.wt_bigram_counts, (w, t)) + 1, " ", getprob(self.t_unigram_counts, t), " ", self.len_wordset,
               " ", self.len_tagset)
+        if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
         return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
             getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
 
@@ -159,29 +161,25 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                  tagset.remove(STARTt) 
         w=text[0]
         for t in tagset:
-            V[0,STARTt,t]=Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t)
+            V[0][STARTt,t]=Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t)
 
         for k in range(1,len(text)-1):
                 isOOV=false
                 w=text[k]
                 if w not in wordset: 
                     isOOV=true
-                for t in tagset: 
-                   # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t) chci něco v tomto smyslu, ale toto úplně nefunguje
+                for t in tagset:
+#když si budu šikovně pamatovat cestu, tak si nepotřebuji pamatovat všech k stavů, ale jen vždy předchozí, tedy místo V[k,...] pouze V[0/1,...]
+                   # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t,isOOV) chci něco v tomto smyslu, ale toto úplně nefunguje
                         # mám V[k-1,ti,tj]p
-                        # chci V[k,tj,t]=max(V[k-1,ti,tj]*Ptt.get_ptt(t,ti,tj))*Pwt.get_pwt(w,t) přes všechna ti,tj, která jsou v V[k-1]
+                        # chci V[k,tj,t]=max(V[k-1,ti,tj]*Ptt.get_ptt(t,ti,tj))*Pwt.get_pwt(w,t,isOOV) přes všechna ti,tj, která jsou v V[k-1]
                         #V[k,,t]
                         # a ještě path
 
 
 
                         print("todo")
-                         #?? proc nejde pouzit proste hledany_tag=argmax p_wt(w,t)*p_tt(t,t_i-1,t_i-2) ??? To ale neni Viterbi, ne?
-                        # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
-
-                print("todo")
-                # ?? proc nejde pouzit proste hledany_tag=argmax p_wt(w,t)*p_tt(t,t_i-1,t_i-2) ??? To ale neni Viterbi, ne?
-                # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
+                    # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
 
         tagset = [STARTt] + tagset  # to be the same as at start
 
