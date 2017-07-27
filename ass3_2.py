@@ -156,12 +156,15 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         s0=(STARTt,STARTt)
         si=(STARTt,STARTt)
         t=''
-        V[-1,STARTt,STARTt]=1
-        while STARTt in tagset: # we dont want to have this tag in the middle of the tag sequence,  for sure while instead of only remove
+        #V[-1,STARTt,STARTt]=1
+        while STARTt in tagset: 
+            # we dont want to have this tag in the middle of the tag sequence,  
+            #for sure while instead of only remove
                  tagset.remove(STARTt) 
         w=text[0]
+        V[0]={} # V has following format: V[time][state]=(probability,path)
         for t in tagset:
-            V[0][STARTt,t]=Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t)
+            V[0][STARTt,t]=(Ptt.get_ptt(t,STARTt,STARTt)*Pwt.get_pwt(w,t),[t])
 
         for k in range(1,len(text)-1):
                 isOOV=false
@@ -169,6 +172,15 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 if w not in wordset: 
                     isOOV=true
                 for t in tagset:
+                    bests=''
+                    bestpath=''
+                    m=0 # maximum
+                    for (i,j) in V[k-1]:
+                        value=V[k-1][i,j][0]*Ptt.get_ptt(t,i,j)
+                        if value>m: 
+                            (bests[0], bests[1], m, bestpath)==(i, j, value, V[k-1][i,j][1]
+)
+                    V[k][bests[1],t]=(m*Pwt.get_pwt(w,t,isOOV),bestpath+[t]) 
 #když si budu šikovně pamatovat cestu, tak si nepotřebuji pamatovat všech k stavů, ale jen vždy předchozí, tedy místo V[k,...] pouze V[0/1,...]
                    # V[k,j,t]=max([V[k-1],i,j)*Ptt.get_ptt(t,i,j) for (i,j) in V[k-1]])*Pwt.get_pwt(w,t,isOOV) chci něco v tomto smyslu, ale toto úplně nefunguje
                         # mám V[k-1,ti,tj]p
@@ -178,9 +190,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
 
 
 
-                        print("todo")
-                    # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
-
+        print("todo: the end")
         tagset = [STARTt] + tagset  # to be the same as at start
 
         return ""
