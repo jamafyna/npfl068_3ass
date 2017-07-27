@@ -195,16 +195,12 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         # --- final search the best tag sequence
         maxprob=0
         ends={}              # the best end state
-        last=(len(text)-1)%2 # instead of (len(text)-1)
         for s in V[now]:
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
-        try:
-            return V[now][ends][1]
-        except:
-            print("last:",last,"ends:",ends)
-            tagged=V[last][ends]
+                if(maxprob==0) warning.warn("final sequence probability is zero", Warning)
+        return V[now][ends][1]
 
 # -----------------------------initialization-------------------------------
 
@@ -249,6 +245,6 @@ pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
-tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt)
+tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt) #TODO: nespoustet na cely text, ale pouze na casti
 #for p in tagged: print(p)
 
