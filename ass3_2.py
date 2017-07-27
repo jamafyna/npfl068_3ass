@@ -123,7 +123,9 @@ def viterbi(text,tagset,wordset):
                 for t1 in tagset: # pro k = 0 se místo tagset vrací set([''])
                     if t1==STARTt: continue
                     for t2 in tagset: #pro lib. k je vždy tagset
+                        print("todo")
                          #?? proc nejde pouzit proste hledany_tag=argmax p_wt(w,t)*p_tt(t,t_i-1,t_i-2) ??? To ale neni Viterbi, ne?
+                        # pro OOV mozna pouzit pouze argmax p_tt() a zkusit dat vsechny tagy
 
 
         return ""
