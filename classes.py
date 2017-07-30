@@ -5,16 +5,22 @@ from collections import Counter, defaultdict
 class LinearSmoothedDistribution:
     def __init__(self, data, p_0, p_1, p_2, p_3):
         self.p_0 = p_0
-        self.p_1 = p_1
-        self.p_2 = p_2
-        self.p_3 = p_3
+        self.p_1 = defaultdict(lambda: 0, p_1)
+        self.p_2 = defaultdict(lambda: 0, p_2)
+        self.p_3 = defaultdict(lambda: 0, p_3)
+        data = [t for w, t in data]
         trigrams = zip(data, data[1:], data[2:])
         self.lambdas = self.em_smoothing(trigrams)
 
     def p(self, t1, t2, t3):
         """Returns the probability of a trigram under the current model"""
-        return self.lambdas[3] * self.p_3[t1][t2][t3] + self.lambdas[2] * self.p_2[t2][t3] + self.lambdas[1] * self.p_1[
-            t3] + self.lambdas[0] * self.p_0
+        return self.lambdas[3] * self.p_3[t1, t2, t3] + self.lambdas[2] * self.p_2[t2, t3] + \
+               self.lambdas[1] * self.p_1[t3] + self.lambdas[0] * self.p_0
+
+    def p(self, t1, t2, t3, lambdas):
+        """Returns the probability of a trigram under the current model"""
+        return lambdas[3] * self.p_3[t1, t2, t3] + lambdas[2] * self.p_2[t2, t3] + \
+               lambdas[1] * self.p_1[t3] + lambdas[0] * self.p_0
 
     @staticmethod
     def normalize(vector):
@@ -31,11 +37,14 @@ class LinearSmoothedDistribution:
         # compute expected counts
         while True:
             for t1, t2, t3 in trigrams:
-                p_smoothed = self.p(t1, t2, t3)
+                try:
+                    p_smoothed = self.p(t1, t2, t3, lambdas)
+                except:
+                    print(t1, t2, t3)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t3] / p_smoothed
-                c_l[2] += lambdas[2] * self.p_2[t2][t3] / p_smoothed
-                c_l[3] += lambdas[3] * self.p_3[t1][t2][t3] / p_smoothed
+                c_l[2] += lambdas[2] * self.p_2[t2, t3] / p_smoothed
+                c_l[3] += lambdas[3] * self.p_3[t1, t2, t3] / p_smoothed
             # compute next lambdas
             next_l = self.normalize(c_l)
             if all(x < epsilon for x in lambdas - next_l):
@@ -71,3 +80,6 @@ class AddOneSmoothedDistribution:
         self.distribution = MyDefaultDictionary(v)
         for w, t in whole_data:
             self.distribution[(w, t)] = (counts[(w, t)] + 1) / (tag_counts[t] + v)
+
+    def p(self, word, tag):
+        self.distribution[word, tag]
