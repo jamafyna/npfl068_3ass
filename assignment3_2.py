@@ -11,8 +11,8 @@ from optparse import OptionParser
 from sys import stdin as sin
 from sys import stdout as sout
 
-STARTw = "<s>"
-STARTt = "<s>"
+STARTw = "###"
+STARTt = "###"
 
 
 def getprob(p, h):
@@ -145,7 +145,7 @@ class Ptt:
 
 
 #def getword(word,)
-def viterbi(text,tagset,wordset,Pwt,Ptt):
+def viterbilog(text,tagset,wordset,Pwt,Ptt):
 
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
@@ -164,7 +164,6 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         V[0]={} 
         V[1]={}
         # --- initialisation, starting state
-       # V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
         V[1][STARTt,STARTt]=(0,[(STARTw,STARTt),(STARTw,STARTt)])
         OOVcount=0
         # --- finding the best way
@@ -175,36 +174,83 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 prev=(now+1)%2 # instead of k-1;          only actual and previous time
                 V[now]={}
                 if w not in wordset:
-                    #print("out-of-vocabulary: ",w) 
                     OOVcount+=1
                     isOOV=True
                 for t in tagset:
                     bests={}
                     bestpath=[]
-                   # maxprob=0
                     maxprob=-float('inf')
                     for (i,j) in V[prev]:
-                       # value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
                         value=V[prev][i,j][0]+math.log(Ptt.get_ptt(t,i,j),2)
-                       # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
                     V[now][bests[1],t]=(maxprob+math.log(Pwt.get_pwt(w,t,isOOV),2),bestpath+[(w,t)])
-                   # V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=-float('inf')
-        #maxprob=0
         ends={}              # the best end state
         for s in V[now]:
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
-                #if(maxprob==0): warnings.warn("final sequence probability is zero", Warning)
-        return V[now][ends][1][2:] # only [2:] because of start tokens
+        return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
+
+def viterbi(text,tagset,wordset,Pwt,Ptt):
+        if len(text)==0: return []
+        isOOV=False # indicates if proceeded word is out-of-vocabulary
+        tagsetcontainsSTART=False
+        while STARTt in tagset: 
+            tagset.remove(STARTt)
+            tagsetcontainsSTART=True 
+            # we dont want to have this tag in the middle of the tag sequence,  
+            # for sure while instead of only remove
+        if text[0]==STARTw: 
+            warnings.warn("inconsistend data, start tokens",Warning)
+        else: text=[(STARTw, STARTt), (STARTw, STARTt)]+text 
+        V={}    # structure for remember viterbi computation
+                # V[time][state]=(probability,path) where state==(tag1,tag2)
+        path={} # the best path to some state
+        V[0]={} 
+        V[1]={}
+        OOVcount=0
+        # --- initialisation, starting state
+        V[1][STARTt,STARTt]=(1,[[STARTw,STARTt],[STARTw,STARTt]])
+        # --- finding the best way
+        for k in range(2,len(text)):
+                isOOV=False
+                w=text[k]
+                now=k%2        # k modulo 2 instead of k; it is sufficient to remember 
+                prev=(now+1)%2 # instead of k-1;          only actual and previous time
+                V[now]={}
+                if w not in wordset:
+                    OOVcount+=1
+                    isOOV=True
+                for t in tagset:
+                    bests={}
+                    bestpath=[]
+                    maxprob=0
+                    for (i,j) in V[prev]:
+                        value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
+                       # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
+                        if value>=maxprob: # '=' because of very small numbers  
+                            bests[0]=i
+                            bests[1]=j
+                            maxprob=value
+                            bestpath=V[prev][i,j][1]
+                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[[w,t]])
+        if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
+        # --- final search the best tag sequence
+        maxprob=0
+        ends={}              # the best end state
+        for s in V[now]:
+                if V[now][s][0]>=maxprob:
+                    maxprob=V[now][s][0]
+                    ends=s
+        if maxprob==0: warnings.warn("zero maxprobability")
+        return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
 
 def occuracy(right,computed):
@@ -236,15 +282,15 @@ supervised = options.supervised
 # ------ data preparation ---------
 
 data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
-dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:60000]
-dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]
-dataS = data[-40000:] # the right testing data
-#dataS = data[-39:] # testingdata for debuging
+dataT = [[STARTw, STARTt], [STARTw, STARTt]] + data[:60000]
+dataH = [[STARTw, STARTt], [STARTw, STARTt]] + data[-60000:-40000]
+#dataS = data[-40000:] # the right testing data
+dataS = data[-39:] # testingdata for debuging
+if dataS[0]!=[[STARTw,STARTt]]: dataS= [[STARTw,STARTt]]+dataS
 data = []  # for gc
-
+OOVcount=0
 tagsetT = set([t for (_, t) in dataT])
 wordsetT = set([w for (w, _) in dataT])
-# tag_set=set([t for (_,t) in dataH]+[t for (_,t) in dataT])
 
 # ------- computation -------------
 
@@ -254,17 +300,28 @@ else:
     print("todo")
     sys.exit()
 #p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
-# todo: toto neni sikovne, zbytecne zabira moc pameti, lepsi neco typu getter a vzdy spocist
 p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
-# #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
+#sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
-# viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
-# potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
 
 
-
-tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt) #TODO: nespoustet na cely text, ale pouze na casti
-for p in tagged: print(p)
-
+# -------- tagging ----------------
+tagged=[]
+sentence=[]
+v=[]
+c=0
+for p in dataS:
+    if p==['###','###']: 
+        if(sentence!=[]):
+            v,c=viterbi([w for (w,_) in sentence], tagsetT,wordsetT,pwt,pt)
+        tagged=tagged+v+[['###','###']]
+        OOVcount+=c
+        sentence=[]
+        v=[]
+        c=0
+    else: sentence=sentence+[p]
+    
+#for p in tagged: print(p)
+print('out-of-vocabulary words:',OOVcount)
 print(occuracy(dataS,tagged))
