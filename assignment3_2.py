@@ -195,9 +195,13 @@ def viterbilog(text,tagset,wordset,Pwt,Ptt):
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
+        if(maxprob==-float('inf')):warnings.warn("not changed max proability at the end")
         return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
-def viterbi(text,tagset,wordset,Pwt,Ptt):
+def viterbi(text,tagset,wordset,Pwt,Ptt,start):
+        """
+        Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+        """
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
         tagsetcontainsSTART=False
@@ -208,7 +212,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
             # for sure while instead of only remove
         if text[0]==STARTw: 
             warnings.warn("inconsistend data, start tokens",Warning)
-        else: text=[(STARTw, STARTt), (STARTw, STARTt)]+text 
+        else: text=[(STARTw, STARTt)]+text 
         V={}    # structure for remember viterbi computation
                 # V[time][state]=(probability,path) where state==(tag1,tag2)
         path={} # the best path to some state
@@ -216,13 +220,15 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         V[1]={}
         OOVcount=0
         # --- initialisation, starting state
-        V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
-        now=1
+        #V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
+        V[0][start]=(0,[start])
+        V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
+        now=1 # value depends on k which starts from 1
         prev=0
         # --- finding the best way
-        for k in range(2,len(text)):
+        for k in range(2,len(text)+1):
                 isOOV=False
-                w=text[k]
+                w=text[k-1]
                 now=k%2        # k modulo 2 instead of k; it is sufficient to remember 
                 prev=(now+1)%2 # instead of k-1;          only actual and previous time
                 V[now]={}
@@ -250,7 +256,8 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
-        if maxprob==0: warnings.warn("zero maxprobability")
+        if maxprob==0 & len(text)>1: 
+            warnings.warn("zero maxprobability at the end")
         return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
 
@@ -321,12 +328,15 @@ tagged=[]
 sentence=[]
 v=[]
 c=0
+sentence_end=(STARTw,STARTt)
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
-            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt)
+            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt, sentence_end)
         tagged=tagged+v+[(STARTt,STARTw)]
         OOVcount+=c
+        if len(sentence)==0: sentence_end=(STARTw,STARTt)
+        else: sentence_end=sentence[len(sentence)-1]
         sentence=[]
         v=[]
         c=0
