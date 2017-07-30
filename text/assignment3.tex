@@ -35,7 +35,7 @@ Součástí úkolu jsou Python3 skripty \textbf{assignment3\_1.py} a \textbf{ass
 
 Použili jsme Brillův tagger z knihovny NLTK.
 Jako počátečný tagger jsme použili jednoduchý unigramový tagger, který si pouze zapamatuje nejčastejší značku pro každé slovo trénovacích dat.
-Použili jsme počáteční množinu 18 pravidel, stejné jako v ukázce v knize\footnote{Volně dostupné na \url{http://www.nltk.org/book/}}. Počet pravidel je maximálne 150 (přednastavená hodnota NLTK).
+Použili jsme počáteční množinu 18 pravidel, stejné jako v ukázce v knize\footnote{Volně dostupné na \url{http://www.nltk.org/book/}}. Počet pravidel je maximálne 200 (přednastavená hodnota NLTK).
 
 \subsection*{Výsledky}
 
@@ -47,11 +47,14 @@ Použili jsme počáteční množinu 18 pravidel, stejné jako v ukázce v knize
 \toprule
 \textbf{Angličtina} & \textbf{Přesnost} \\
 \midrule
-1. stupeň & 0.893425 \\
-2. stupeň & 0.8929   \\
-3. stupeň & 0.865525 \\
-4. stupeň & 0.89685  \\
-5. stupeň & 0.89665  \\
+1. stupeň & 0.8878314603811958 \\
+2. stupeň & 0.8877681340735528 \\
+3. stupeň & 0.8591886684372233 \\
+4. stupeň & 0.8916271557338613 \\
+5. stupeň & 0.8927185098345708 \\
+\midrule
+Průměr   & 0.88382678569208084 \\
+$\sigma$ & 0.01247811683956135 \\
 \bottomrule
 \end{tabular}
 \hskip 50pt
@@ -59,11 +62,14 @@ Použili jsme počáteční množinu 18 pravidel, stejné jako v ukázce v knize
 \toprule
 \textbf {Čeština} & \textbf{Přesnost} \\
 \midrule
-1. stupeň & 0.7756   \\
-2. stupeň & 0.791825 \\
-3. stupeň & 0.758075 \\
-4. stupeň & 0.7922   \\
-5. stupeň & 0.791    \\
+1. stupeň & 0.7611722195653329 \\
+2. stupeň & 0.7784951378925554 \\
+3. stupeň & 0.7446763540290621 \\
+4. stupeň & 0.7794976095512296 \\
+5. stupeň & 0.7772650116698494 \\
+\midrule
+Průměr   & 0.76822126654160594 \\
+$\sigma$ & 0.01355396354317235 \\
 \bottomrule
 \end{tabular}
 \caption{Přesnost (accuracy) pro Brillův tagger pro oba jazyky.}
