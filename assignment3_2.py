@@ -167,7 +167,8 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         V[0]={} 
         V[1]={}
         # --- initialisation, starting state
-        V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
+       # V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
+        V[1][STARTt,STARTt]=(0,[(STARTw,STARTt),(STARTw,STARTt)])
         # --- finding the best way
         for k in range(2,len(text)):
                 isOOV=False
@@ -181,30 +182,30 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 for t in tagset:
                     bests={}
                     bestpath=[]
-                    maxprob=0
+                   # maxprob=0
+                    maxprob=-float('inf')
                     for (i,j) in V[prev]:
-                        value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
+                       # value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
+                        value=V[prev][i,j][0]+math.log(Ptt.get_ptt(t,i,j),2)
                        # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
+                    V[now][bests[1],t]=(maxprob+math.log(Pwt.get_pwt(w,t,isOOV),2),bestpath+[(w,t)])
+                   # V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
-        maxprob=0
+        maxprob=-float('inf')
+        #maxprob=0
         ends={}              # the best end state
-        last=(len(text)-1)%2 # instead of (len(text)-1)
         for s in V[now]:
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
-        try:
-            return V[now][ends][1]
-        except:
-            print("last:",last,"ends:",ends)
-            tagged=V[last][ends]
+                #if(maxprob==0): warnings.warn("final sequence probability is zero", Warning)
+        return V[now][ends][1]
 
 # -----------------------------initialization-------------------------------
 
@@ -249,6 +250,6 @@ pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
-tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt)
-#for p in tagged: print(p)
+tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt) #TODO: nespoustet na cely text, ale pouze na casti
+for p in tagged: print(p)
 
