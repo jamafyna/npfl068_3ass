@@ -10,6 +10,8 @@ from sys import stdin as sin
 from sys import stdout as sout
 from collections import Counter
 from classes import LinearSmoothedDistribution
+from classes import AddOneSmoothedDistribution
+
 
 STARTw = "###"
 STARTt = "###"
@@ -126,8 +128,8 @@ class Pwt:
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        return ((get_prob(self.wt_bigram_counts, (w, t)) + 1) / (
-           get_prob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
+        return ((get_prob(self.wt_bigram_counts, (w, t)) + 0.02) / (
+           get_prob(self.t_unigram_counts, t) +0.02* self.len_wordset * self.len_tagset))
 
 class Ptt:
     """
@@ -319,8 +321,9 @@ pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 
 p=pp[1]
 d = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
+#h = AddOneSmoothedDistribution(dataH,dataT)
 # -------- tagging ----------------
-sys.exit()
+#sys.exit()
 tagged=[]
 sentence=[]
 v=[]
