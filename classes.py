@@ -1,4 +1,5 @@
 import numpy as np
+from collections import Counter, defaultdict
 
 
 class LinearSmoothedDistribution:
@@ -44,3 +45,18 @@ class LinearSmoothedDistribution:
                 lambdas = next_l
             print('DEBUG:', lambdas)
         return lambdas
+
+
+class AddOneSmoothedDistribution:
+    def __init__(self, training_data, held_out_data):
+        # for add 1 smoothing we don't need separate held out data, so we can use everything
+        whole_data = training_data + held_out_data
+        counts = Counter(whole_data)
+        tag_counts = Counter([t for w, t in whole_data])
+
+        # get the size of the vocabulary
+        v = len(counts.keys())
+        # id there is no such word tag pair, determine from the tag count
+        self.distribution = defaultdict(lambda w, t: 1 / (counts[t] + v))
+        for w, t in whole_data:
+            self.distribution[(w, t)] = (counts[(w, t)] + 1) / (tag_counts[t] + v)
