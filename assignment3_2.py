@@ -89,7 +89,7 @@ def smoothEM(p, heldout, traindata):
     """
    
     l = EMalgorithm(heldout, p)  # get lambdas
-    print(l)
+    print("lambdas:",l)
     tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
     ttrainset=set(traindata) 
     pt_em = {
@@ -104,7 +104,7 @@ def smoothAdd1(pc, data, tagset):
     """
     Do smoothing by Adding 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
     """
-    pwt = {(w, t): ((getprob(pc[0], (w, t)) + 1) / (getprob(pc[1], t) + len(wordsetT) * len(tagset))) for w in wordsetT for t in tagset}
+    pwt = {(w, t): ((get_prob(pc[0], (w, t)) + 1) / (get_prob(pc[1], t) + len(wordsetT) * len(tagset))) for w in wordsetT for t in tagset}
     return pwt
 
 
@@ -125,8 +125,8 @@ class Pwt:
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
-           getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
+        return ((get_prob(self.wt_bigram_counts, (w, t)) + 1) / (
+           get_prob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
 
 class Ptt:
     """
@@ -146,7 +146,6 @@ class Ptt:
 
 
 def viterbilog(text,tagset,wordset,Pwt,Ptt):
-
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
         tagsetcontainsSTART=False
@@ -217,7 +216,9 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         V[1]={}
         OOVcount=0
         # --- initialisation, starting state
-        V[1][STARTt,STARTt]=(1,[[STARTw,STARTt],[STARTw,STARTt]])
+        V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
+        now=1
+        prev=0
         # --- finding the best way
         for k in range(2,len(text)):
                 isOOV=False
@@ -240,7 +241,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[[w,t]])
+                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=0
@@ -286,6 +287,7 @@ supervised = options.supervised
 #dataH = [[STARTw, STARTt], [STARTw, STARTt]] + data[-60000:-40000]
 #dataS = data[-40000:] # the right testing data
 # @ prerobil som to aby tam boli rovno tuple a bolo to potom jednoduchsie
+data = []
 for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
@@ -294,7 +296,7 @@ dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data used for smoothing
 dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]  # testing data
 #dataS = data[-39:] # testingdata for debuging
-if dataS[0]!=[[STARTw,STARTt]]: dataS= [[STARTw,STARTt]]+dataS
+if dataS[0]!=[(STARTw,STARTt)]: dataS= [(STARTw,STARTt)]+dataS
 data = []  # for gc
 OOVcount=0
 tagsetT = set([t for (_, t) in dataT])
@@ -320,10 +322,10 @@ sentence=[]
 v=[]
 c=0
 for p in dataS:
-    if p==['###','###']: 
+    if p==(STARTw,STARTt): 
         if(sentence!=[]):
-            v,c=viterbi([w for (w,_) in sentence], tagsetT,wordsetT,pwt,pt)
-        tagged=tagged+v+[['###','###']]
+            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt)
+        tagged=tagged+v+[(STARTt,STARTw)]
         OOVcount+=c
         sentence=[]
         v=[]
