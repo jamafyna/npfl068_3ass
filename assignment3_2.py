@@ -75,6 +75,7 @@ def EMalgorithm(data, p):  # heldoutdata
         l = nextl
         nextl = EMiter(data, p, l)
         itercount = itercount + 1
+    sout.write("\nSmoothing, EM algorithm:\n")
     sout.write("\nnumber of iterations:" + str(itercount) + ", precision: " + str(e) + "\n")
     return nextl
 
@@ -84,10 +85,11 @@ def smoothEM(p, heldout, traindata):
     """
     Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
     """
+   
     l = EMalgorithm(heldout, p)  # get lambdas
+    print(l)
     tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
-    # TODO: TO JE DOCELA DIVNE, ZE TU POUZIVAM TRIGRAMY MISTO VSECH MOZNYCH TROJIC (pozor, stejne tak v EMiter) , tady to nedává smysl, TODO: OVERIT, ZE MAM ZDE POUZIT TRAINING DATA
-    ttrainset=set(traindata) #todo:pouzit ta globalni, pokud takto spravne
+    ttrainset=set(traindata) 
     pt_em = {
         (i, j, k): (
             l[0] * p[0] + l[1] * getprob(p[1], k) + l[2] * getprob(p[2], (j, k)) + l[3] * getprob(p[3], (i, j, k)))
@@ -122,9 +124,9 @@ class Pwt:
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        #return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
-         #   getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
-        return p_wt[w,t]
+        return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
+           getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
+        #return p_wt[w,t]
 
 class Ptt:
     """
@@ -143,8 +145,6 @@ class Ptt:
         return self.p_t[t3, t1, t2]  # TODO: Možná udělat časem dynamicky
 
 
-
-#def getword(word,)
 def viterbilog(text,tagset,wordset,Pwt,Ptt):
 
         if len(text)==0: return []
@@ -284,8 +284,8 @@ supervised = options.supervised
 data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
 dataT = [[STARTw, STARTt], [STARTw, STARTt]] + data[:60000]
 dataH = [[STARTw, STARTt], [STARTw, STARTt]] + data[-60000:-40000]
-#dataS = data[-40000:] # the right testing data
-dataS = data[-39:] # testingdata for debuging
+dataS = data[-40000:] # the right testing data
+#dataS = data[-39:] # testingdata for debuging
 if dataS[0]!=[[STARTw,STARTt]]: dataS= [[STARTw,STARTt]]+dataS
 data = []  # for gc
 OOVcount=0
