@@ -100,7 +100,7 @@ def smoothAdd1(pc, data, tagset):
     """
     Do smoothing by Adding 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
     """
-    pwt = {(w, t): ((getprob(pc[0], (w, t)) + 1) / (getprob(pc[1], t) + len(wordset) * len(tagset))) for w in words for
+    pwt = {(w, t): ((getprob(pc[0], (w, t)) + 1) / (getprob(pc[1], t) + len(wordsetT) * len(tagset))) for w in wordsetT for
            t in tagset}
     return pwt
 
@@ -121,13 +121,10 @@ class Pwt:
         """
         Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
         """
-        #print("DEBUG: in get_pwt: w: ",w,", t:",t)
-        #print(getprob(self.wt_bigram_counts, (w, t)) + 1, " ", getprob(self.t_unigram_counts, t), " ", self.len_wordset,
-         #     " ", self.len_tagset)
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
-            getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
-
+        #return ((getprob(self.wt_bigram_counts, (w, t)) + 1) / (
+         #   getprob(self.t_unigram_counts, t) + self.len_wordset * self.len_tagset))
+        return p_wt[w,t]
 
 class Ptt:
     """
@@ -158,9 +155,9 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
             tagsetcontainsSTART=True 
             # we dont want to have this tag in the middle of the tag sequence,  
             # for sure while instead of only remove
-        if text[0]!=STARTw or text[1]!=STARTw:
+        if text[0]==STARTw: 
             warnings.warn("inconsistend data, start tokens",Warning)
-       
+        else: text=[(STARTw, STARTt), (STARTw, STARTt)]+text 
         V={}    # structure for remember viterbi computation
                 # V[time][state]=(probability,path) where state==(tag1,tag2)
         path={} # the best path to some state
@@ -169,6 +166,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
         # --- initialisation, starting state
        # V[1][STARTt,STARTt]=(1,[(STARTw,STARTt),(STARTw,STARTt)])
         V[1][STARTt,STARTt]=(0,[(STARTw,STARTt),(STARTw,STARTt)])
+        OOVcount=0
         # --- finding the best way
         for k in range(2,len(text)):
                 isOOV=False
@@ -177,7 +175,8 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                 prev=(now+1)%2 # instead of k-1;          only actual and previous time
                 V[now]={}
                 if w not in wordset:
-                    print("out-of-vocabulary: ",w) 
+                    #print("out-of-vocabulary: ",w) 
+                    OOVcount+=1
                     isOOV=True
                 for t in tagset:
                     bests={}
@@ -205,7 +204,19 @@ def viterbi(text,tagset,wordset,Pwt,Ptt):
                     maxprob=V[now][s][0]
                     ends=s
                 #if(maxprob==0): warnings.warn("final sequence probability is zero", Warning)
-        return V[now][ends][1]
+        return V[now][ends][1][2:] # only [2:] because of start tokens
+
+
+def occuracy(right,computed):
+       if len(right)!=len(computed): 
+            warnings.warn("inconsistend data, different length of test and computed solution",Warning)
+       correct=0
+       allc=min(len(right),len(computed))
+       for i in range(0,allc-1):
+           if right[i][0]!=computed[i][0]:
+               raise Exception("inconsistent data, different words in test and computed")
+           if right[i][1]==computed[i][1]: correct+=1
+       return (correct,allc)
 
 # -----------------------------initialization-------------------------------
 
@@ -227,8 +238,8 @@ supervised = options.supervised
 data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:60000]
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]
-dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:] # the right testing data
-#dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-39:] # testingdata for debuging
+dataS = data[-40000:] # the right testing data
+#dataS = data[-39:] # testingdata for debuging
 data = []  # for gc
 
 tagsetT = set([t for (_, t) in dataT])
@@ -244,12 +255,16 @@ else:
     sys.exit()
 #p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
 # todo: toto neni sikovne, zbytecne zabira moc pameti, lepsi neco typu getter a vzdy spocist
-# p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
+p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 # #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 # viterbi(dataS,tagsetT, wordsetT) # zvlážit, zda nedat tagset a wordset i z heldout
 # potřebuji p(t|u,v), p_wt(w/t) = c_wt(t,w)/c_t(t)
+
+
+
 tagged=viterbi([w for (w,_) in dataS],tagsetT,wordsetT,pwt,pt) #TODO: nespoustet na cely text, ale pouze na casti
 for p in tagged: print(p)
 
+print(occuracy(dataS,tagged))
