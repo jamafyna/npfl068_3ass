@@ -9,6 +9,7 @@ from optparse import OptionParser
 from sys import stdin as sin
 from sys import stdout as sout
 from collections import Counter
+from classes import LinearSmoothedDistribution
 
 STARTw = "###"
 STARTt = "###"
@@ -289,16 +290,10 @@ supervised = options.supervised
 
 # ------ data preparation ---------
 
-#data = [l.split('/', 1) for l in f.read().splitlines()]  # items in format: word,speech-tag which can contains '/'
-#dataT = [[STARTw, STARTt], [STARTw, STARTt]] + data[:-60000]
-#dataH = [[STARTw, STARTt], [STARTw, STARTt]] + data[-60000:-40000]
-#dataS = data[-40000:] # the right testing data
-# @ prerobil som to aby tam boli rovno tuple a bolo to potom jednoduchsie
 data = []
 for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
-# @ tu bola chyba, trenovacie data mali iba 60000 vzorov, ale ich ma byt ten zvysok --- pridane minusko
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data used for smoothing
 dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]  # testing data
@@ -322,8 +317,10 @@ p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 
-
+p=pp[1]
+d = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
 # -------- tagging ----------------
+sys.exit()
 tagged=[]
 sentence=[]
 v=[]
@@ -333,6 +330,7 @@ for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
             v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt, sentence_end)
+            v,c=viterbilog([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt)
         tagged=tagged+v+[(STARTt,STARTw)]
         OOVcount+=c
         if len(sentence)==0: sentence_end=(STARTw,STARTt)
@@ -345,3 +343,4 @@ for p in dataS:
 #for p in tagged: print(p)
 print('out-of-vocabulary words:',OOVcount)
 print(occuracy(dataS,tagged))
+

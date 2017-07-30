@@ -31,7 +31,7 @@ class LinearSmoothedDistribution:
         # compute expected counts
         while True:
             for t1, t2, t3 in trigrams:
-                p_smoothed = self.p(lambdas, t1, t2, t3, p_0, p_1, p_2, p_3)
+                p_smoothed = self.p(lambdas, t1, t2, t3)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t3] / p_smoothed
                 c_l[2] += lambdas[2] * self.p_2[t2][t3] / p_smoothed
