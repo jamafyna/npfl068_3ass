@@ -47,16 +47,27 @@ class LinearSmoothedDistribution:
         return lambdas
 
 
+class MyDefaultDictionary(dict):
+    def __init__(self, vocabulary_size):
+        self.v = vocabulary_size
+
+    def __missing__(self, key):
+        # if there is no such word tag pair, determine from the tag count
+        return 1 / (self.get(key[1], 0) + self.v)
+
+
 class AddOneSmoothedDistribution:
     def __init__(self, training_data, held_out_data):
         # for add 1 smoothing we don't need separate held out data, so we can use everything
+        # tags are hidden, therefore we do not need to worry about the tag not being "seen"
         whole_data = training_data + held_out_data
+        # word and tag counts
         counts = Counter(whole_data)
+        # tag counts
         tag_counts = Counter([t for w, t in whole_data])
 
         # get the size of the vocabulary
         v = len(counts.keys())
-        # id there is no such word tag pair, determine from the tag count
-        self.distribution = defaultdict(lambda w, t: 1 / (counts[t] + v))
+        self.distribution = MyDefaultDictionary(v)
         for w, t in whole_data:
             self.distribution[(w, t)] = (counts[(w, t)] + 1) / (tag_counts[t] + v)
