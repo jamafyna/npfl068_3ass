@@ -82,4 +82,4 @@ class AddOneSmoothedDistribution:
             self.distribution[(w, t)] = (counts[(w, t)] + 1) / (tag_counts[t] + v)
 
     def p(self, word, tag):
-        self.distribution[word, tag]
+        return self.distribution[(word, tag)]
