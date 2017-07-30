@@ -9,7 +9,7 @@ class LinearSmoothedDistribution:
         self.p_2 = p_2
         self.p_3 = p_3
         trigrams = zip(data, data[1:], data[2:])
-        self.lambdas = self.em_smoothing(trigrams, p_0, p_1, p_2, p_3)
+        self.lambdas = self.em_smoothing(trigrams)
 
     def p(self, t1, t2, t3):
         """Returns the probability of a trigram under the current model"""
@@ -22,7 +22,7 @@ class LinearSmoothedDistribution:
         s = sum(vector)
         return vector / s
 
-    def em_smoothing(self, trigrams, p_0, p_1, p_2, p_3, epsilon=1e-03):
+    def em_smoothing(self, trigrams, epsilon=1e-03):
         """Returns the coefficient for smoothed distribution"""
         # initialize lambdas
         lambdas = np.array([0.25, 0.25, 0.25, 0.25])
@@ -31,7 +31,7 @@ class LinearSmoothedDistribution:
         # compute expected counts
         while True:
             for t1, t2, t3 in trigrams:
-                p_smoothed = self.p(lambdas, t1, t2, t3, p_0, p_1, p_2, p_3)
+                p_smoothed = self.p(t1, t2, t3)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t3] / p_smoothed
                 c_l[2] += lambdas[2] * self.p_2[t2][t3] / p_smoothed
