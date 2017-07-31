@@ -112,24 +112,25 @@ def smoothAdd(pc, data, tagset, lamb=2**(-10)):
 
 
 class Pwt:
-    wt_bigram_counts = []
-    t_unigram_counts = []
-    len_wordset = 1
-    len_tagset = 1
+    wt_counts = []
+    t_counts = []
+    vocab_size=0
 
-    def __init__(self, wtcounts, tcounts, wlen, tlen):
-        self.wt_bigram_counts = wtcounts
-        self.t_unigram_counts = tcounts
-        self.len_wordset = wlen
-        self.len_tagset = tlen
+    def __init__(self,data,vocabulary_size):
+        self.t_counts = Counter([t for (_,t) in data])
+        self.wt_counts = Counter(data)  # Counter([(w, t) for (w, t) in data_wt])
+        self.vocab_size=vocabulary_size
 
-    def get_pwt(self, w, t, isOOV=False, lamb=2**(-10)):
+    def get_smoothed_pwt(self, w, t, isOOV):
         """
         Returns smoothed p(w|t), by smoothing less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
         """
-        if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        return ((get_prob(self.wt_bigram_counts, (w, t)) + lamb) / (
-           get_prob(self.t_unigram_counts, t) + lamb* self.len_wordset * self.len_tagset))
+        return (self.wt_counts[w,t]+1)/(self.t_counts[t]+self.vocab_size)
+
+    #def get_pwt(self, w, t, isOOV=False, lamb=2**(-10)):
+    #    if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
+    #    return ((get_prob(self.wt_counts, (w, t)) + lamb) / (
+    #       get_prob(self.t_counts, t) + lamb * self.len_wordset * self.len_tagset))
 
 class Ptt:
     """
@@ -189,7 +190,7 @@ def viterbilog(text,tagset,wordset,Pwt,Ptt):
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob+math.log(Pwt.get_pwt(w,t,isOOV),2),bestpath+[(w,t)])
+                    V[now][bests[1],t]=(maxprob+math.log(Pwt.get_smoothed_pwt(w,t,isOOV),2),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=-float('inf')
@@ -250,7 +251,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt,start):
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob*Pwt.get_pwt(w,t,isOOV),bestpath+[(w,t)])
+                    V[now][bests[1],t]=(maxprob*Pwt.get_smoothed_pwt(w,t,isOOV),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=0
@@ -316,7 +317,8 @@ else:
 #p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
 p_wt=smoothAdd(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
-pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
+
+pwt = Pwt(dataT,len(tagsetT)*len(wordsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 
 p=pp[1]
