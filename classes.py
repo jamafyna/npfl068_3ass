@@ -29,7 +29,7 @@ class LinearSmoothedDistribution:
         s = sum(vector)
         return vector / s
 
-    def em_smoothing(self, trigrams, epsilon=1e-03):
+    def em_smoothing(self, trigrams, epsilon=1e-04):
         """Returns the coefficient for smoothed distribution"""
         # initialize lambdas
         lambdas = np.array([0.25, 0.25, 0.25, 0.25])
