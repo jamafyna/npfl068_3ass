@@ -128,3 +128,23 @@ class AddOneSmoothedDistribution:
 
     def p(self, word, tag):
         return self.distribution[(word, tag)]
+
+
+class LexicalDistribution:
+    """
+    Computes the initial distribution of p(w|t) and smooths it with add less than one smoothing
+    """
+
+    def __init__(self, data):
+        self.t_counts = Counter([t for (_, t) in data])
+        self.w_counts = Counter([w for w, t in data])
+        self.wt_counts = Counter(data)
+        self.vocab_size = len(self.w_counts.keys())
+        self.tagset_len = len(self.t_counts.keys())
+
+    def p(self, w, t, lamb=2 ** (-10)):
+        """
+        Returns smoothed p(w|t)
+        """
+        # todo: Vyrobiť rozdelenie, ktoré preferuje pre neznáme slová tagy, ktoré sú časté so zriedkavými slovami.
+        return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.tagset_len)

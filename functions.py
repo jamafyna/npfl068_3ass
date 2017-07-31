@@ -1,6 +1,6 @@
 import numpy as np
 from collections import Counter, defaultdict
-from classes import Linear
+from classes import Linear, LexicalDistribution
 
 
 def get_distributions(data_wt):
@@ -12,7 +12,8 @@ def get_distributions(data_wt):
     tags_uniq = Counter(tags)
     data_uniq = Counter(data_wt)
     # output probabilities distribution --- P(w|t)
-    p_output = {(w, t): data_uniq[w, t] / tags_uniq[t] for (w, t) in data_uniq}
+    # p_output = {(w, t): data_uniq[w, t] / tags_uniq[t] for (w, t) in data_uniq}
+    p_output = LexicalDistribution(data_wt)
 
     # constant probability mass (avoiding zeros)
     p0 = 1 / len(tags_uniq)
@@ -161,7 +162,7 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
     for i in range(state_count):
         for j in range(len(vocabulary)):
             # TODO : Smooth this distribution
-            emission_matrix[i, j] = emission_distribution.get((vocabulary[j], tag_set[i]), 0)
+            emission_matrix[i, j] = emission_distribution.p(vocabulary[j], tag_set[i])
 
     # preprocessed the data
     data_T = preprocess_data(training_data, word_to_index)
@@ -173,7 +174,7 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
             alfa = compute_forward_probabilities(transition_matrix, emission_matrix, training_sentence, state_count)
             beta = compute_backward_probabilities(transition_matrix, emission_matrix, training_sentence, state_count)
             t_new, e_new = collect_counts_and_reestimate(alfa, beta)
-            # chceck convergence criterion
+            # check convergence criterion
             if np.linalg.norm(transition_matrix - t_new) < epsilon and np.linalg.norm(
                             emission_matrix - e_new) < epsilon:
                 convergence = True
