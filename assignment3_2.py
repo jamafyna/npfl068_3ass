@@ -4,13 +4,14 @@ import math
 import random
 import datetime
 import warnings
-import itertools
+import numpy as np
 from optparse import OptionParser
 from sys import stdin as sin
 from sys import stdout as sout
 from collections import Counter
 from classes import LinearSmoothedDistribution
 from classes import AddOneSmoothedDistribution
+from functions import baum_welch
 
 
 STARTw = "###" # start token/token which split sentences
@@ -313,6 +314,9 @@ parser = OptionParser(usage="usage: %prog [options] filename count")
 parser.add_option("-s", "--supervised",
                   action="store_true", dest="supervised", default=False,
                   help="Use supervised method (the default is unsupervised)")
+parser.add_option("-m", "--memory",
+                  action="store_true", dest="memory", default=False,
+                  help="Use supervised method (the default is unsupervised)")
 parser.add_option("-u", "--unsupervised",
                   action="store_false", dest="supervised", default=False,
                   help="Use unsupervised method (the default option)")
@@ -323,7 +327,7 @@ parser.add_option("-m", "--memory",
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
-memory=True # TODO: idealně jako parametr -m, defaultně memory=False
+memory = options.memory
 
 # ------ data preparation ---------
 
@@ -346,7 +350,11 @@ if supervised:
     pp = get_parametres_superv([t for (_,t) in dataT]) 
          # get distribution of tags from train data, not smoothed yet
 else:
-    print("TODO")
+    # Baum-Welch training
+    transition_matrix, emission_matrix = baum_welch(dataT, dataH)
+    # save the trained model
+    np.save('transition_matrix.npy', transition_matrix)
+    np.save('emission_matrix.npy', emission_matrix)
     sys.exit()
 
 #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti

@@ -10,8 +10,8 @@ def get_distributions(data_wt):
     tags = [t for (_, t) in data_wt]
     # tag unigram counts
     tags_uniq = Counter(tags)
-    data_uniq = Counter(data_wt)
     # output probabilities distribution --- P(w|t)
+    # data_uniq = Counter(data_wt)
     # p_output = {(w, t): data_uniq[w, t] / tags_uniq[t] for (w, t) in data_uniq}
     p_output = LexicalDistribution(data_wt)
 
@@ -161,23 +161,24 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
     emission_matrix = np.zeros((state_count, len(vocabulary) + 1))
     for i in range(state_count):
         for j in range(len(vocabulary)):
-            # TODO : Smooth this distribution
             emission_matrix[i, j] = emission_distribution.p(vocabulary[j], tag_set[i])
 
     # preprocessed the data
-    data_T = preprocess_data(training_data, word_to_index)
+    data_train = preprocess_data(training_data, word_to_index)
 
     convergence = False
     while not convergence:
-        for training_sentence in data_T:
+        for training_sentence in data_train:
             print('DEBUG: Processing a sentence')
             alfa = compute_forward_probabilities(transition_matrix, emission_matrix, training_sentence, state_count)
             beta = compute_backward_probabilities(transition_matrix, emission_matrix, training_sentence, state_count)
-            t_new, e_new = collect_counts_and_reestimate(alfa, beta)
+            t_new, e_new = collect_counts_and_reestimate(alfa, beta, transition_matrix, emission_matrix,
+                                                         training_sentence, state_count)
             # check convergence criterion
             if np.linalg.norm(transition_matrix - t_new) < epsilon and np.linalg.norm(
                             emission_matrix - e_new) < epsilon:
                 convergence = True
             transition_matrix = t_new
             emission_matrix = e_new
-    print('Result')
+
+    return transition_matrix, emission_matrix
