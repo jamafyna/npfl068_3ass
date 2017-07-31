@@ -75,46 +75,6 @@ def compute_backward_probabilities(t_matrix, e_matrix, sentence, n):
     return beta_m
 
 
-def baum_welch(num_states, num_obs, observ, epsilon=.00001):
-    # allocate
-    A_mat = np.ones((num_states, num_states))
-    A_mat = A_mat / np.sum(A_mat, 1)
-    O_mat = np.ones((num_states, num_obs))
-    O_mat = O_mat / np.sum(O_mat, 1)
-    theta = np.zeros((num_states, num_states, observ.size))
-    while True:
-        old_A = A_mat
-        old_O = O_mat
-        A_mat = np.ones((num_states, num_states))
-        O_mat = np.ones((num_states, num_obs))
-        # expectation step, forward and backward probs
-        P, alfa, beta = fb_alg(old_A, old_O, observ)
-        # need to get transitional probabilities at each time step too
-        for a_ind in range(num_states):
-            for b_ind in range(num_states):
-                for t_ind in range(observ.size):
-                    theta[a_ind, b_ind, t_ind] = \
-                        alfa[a_ind, t_ind] * \
-                        beta[b_ind, t_ind + 1] * \
-                        old_A[a_ind, b_ind] * \
-                        old_O[b_ind, observ[t_ind]]
-        # form A_mat and O_mat
-        for a_ind in range(num_states):
-            for b_ind in range(num_states):
-                A_mat[a_ind, b_ind] = np.sum(theta[a_ind, b_ind, :]) / np.sum(P[a_ind, :])
-        A_mat = A_mat / np.sum(A_mat, 1)
-        for a_ind in xrange(num_states):
-            for o_ind in xrange(num_obs):
-                right_obs_ind = np.array(np.where(observ == o_ind)) + 1
-                O_mat[a_ind, o_ind] = np.sum(P[a_ind, right_obs_ind]) / np.sum(P[a_ind, 1:])
-        O_mat = O_mat / np.sum(O_mat, 1)
-        # compare
-        if np.linalg.norm(old_A - A_mat) < .00001 and np.linalg.norm(old_O - O_mat) < .00001:
-            break
-    # get out
-    return A_mat, O_mat
-
-
 def collect_counts_and_reestimate(alfa, beta, t_matrix, e_matrix, sentence, n):
     l = len(sentence)
     inc = np.zeros((n, n, l))
@@ -160,16 +120,6 @@ def collect_counts_and_reestimate(alfa, beta, t_matrix, e_matrix, sentence, n):
 
 def baum_welch(training_data, held_out_data, epsilon=0.001):
     # initialization
-    whole_data = training_data
-
-    # file = open('data/texten2.ptg', 'rt')
-    # data = []
-    # for line in file:
-    #     w, t = line.strip().split(sep='/', maxsplit=1)
-    #     data.append((w, t))
-    # train_data = data[:-60000]
-    # held_out_data = data[-60000:-40000]
-    # test_data = data[-40000:]
 
     # we will use only bigram distribution, otherwise the number of state would be much larger
     # get the words and the tags
@@ -196,7 +146,7 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
     state_count = len(tag_set)
 
     # get P(w|t) and n-gram distributions, use only the first 10,000 words of T to estimate the initial (raw) parameters
-    emission_distribution, dists = get_distributions(train_data[:10000])
+    emission_distribution, dists = get_distributions(training_data[:10000])
     # get the smoothed transition distribution
     trans_distribution = Linear(held_out_data, dists[0], dists[1], dists[2])
 
@@ -215,8 +165,6 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
 
     # preprocessed the data
     data_T = preprocess_data(training_data, word_to_index)
-
-    epsilon = 0.001
 
     convergence = False
     while not convergence:
