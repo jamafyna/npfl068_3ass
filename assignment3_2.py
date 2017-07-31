@@ -134,7 +134,6 @@ class Ptt:
     p_t = []
 
     def __init__(self, p, heldout, train):
-        print(len(heldout), len(train))
         self.p_t = smoothEM(p, heldout, train)  # probabilities p_t1,p_t2,p_t3
 
     def get_ptt(self, t1, t2, t3):
@@ -305,7 +304,7 @@ wordsetT = set([w for (w, _) in dataT])
 # ------- computation -------------
 
 if supervised:
-    pp = get_parametres_superv(dataT)  # get p_t from train data, not smoothed yet
+    pp = get_parametres_superv([t for (_,t) in dataT])  # get p_t from train data, not smoothed yet
 else:
     print("todo")
     sys.exit()
