@@ -87,6 +87,7 @@ class Ptt:
     """
     Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
     """
+    pl={}
 
     def __init__(self, p, heldout, train, less_memory=False):
         print("\n---Smoothing, EM algorithm:---\n")
@@ -95,6 +96,10 @@ class Ptt:
         print("lambdas:\n l0:",self.l[0],"\nl1: ",self.l[1],"\nl2: ",self.l[2],"\nl3: ",self.l[3],"\n")
         if(not less_memory): self.p_t = self.compute_full(p, heldout, train)  
         self.p=p
+        self.pl[0]=self.p[0]*self.l[0]
+        for i in range(1,4):
+            self.pl[i]={t : (self.p[i][t]*self.l[i]) for t in p[i]}
+            
 
     def get_ptt(self, t1, t2, t3):
         """
@@ -103,6 +108,11 @@ class Ptt:
         if self.memory:
               return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] * get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
 
+        else: return self.p_t[t1, t2, t3]
+    
+    def get_prec_ptt(self, t1, t2, t3):
+        if self.memory:
+                return self.pl[0] + get_prob(self.pl[1], t3) + get_prob(self.pl[2], (t2, t3)) + get_prob(self.pl[3], (t1, t2, t3))
         else: return self.p_t[t1, t2, t3]
         
          
@@ -248,8 +258,10 @@ def viterbi(text,tagset,wordset,Pwt,Ptt,start):
                     bests={}
                     bestpath=[]
                     maxprob=0
+                    partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     for (i,j) in V[prev]:
-                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                        #value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                        value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
@@ -311,7 +323,7 @@ parser.add_option("-m", "--memory",
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
-memory=False # TODO: idealně jako parametr -m, defaultně memory=False
+memory=True # TODO: idealně jako parametr -m, defaultně memory=False
 
 # ------ data preparation ---------
 
@@ -357,6 +369,7 @@ for p in dataS:
         if(sentence!=[]):
             v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt, sentence_end)
         tagged=tagged+v+[(STARTt,STARTw)]
+       # for t in tagged: print(t)
         OOVcount+=c
         if len(sentence)==0: sentence_end=(STARTw,STARTt)
         else: sentence_end=sentence[len(sentence)-1]
@@ -364,7 +377,9 @@ for p in dataS:
         v=[]
         c=0
     else: sentence=sentence+[p]
-    
+   
+print("---VITERBI ENDED ---")    
 print('out-of-vocabulary words:',OOVcount)
 o=occuracy(dataS,tagged)
 print('occuracy:', o)
+for t in tagged:print(t)
