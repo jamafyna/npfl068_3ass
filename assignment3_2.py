@@ -103,11 +103,11 @@ def smoothEM(p, heldout, traindata):
     return pt_em
 
 
-def smoothAdd1(pc, data, tagset):
+def smoothAdd(pc, data, tagset, lamb=2**(-10)):
     """
-    Do smoothing by Adding 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
+    Do smoothing by Adding less than 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
     """
-    pwt = {(w, t): ((get_prob(pc[0], (w, t)) + 1) / (get_prob(pc[1], t) + len(wordsetT) * len(tagset))) for w in wordsetT for t in tagset}
+    pwt = {(w, t): ((get_prob(pc[0], (w, t)) + lamb) / (get_prob(pc[1], t) + lamb*len(wordsetT) * len(tagset))) for w in wordsetT for t in tagset}
     return pwt
 
 
@@ -123,13 +123,13 @@ class Pwt:
         self.len_wordset = wlen
         self.len_tagset = tlen
 
-    def get_pwt(self, w, t, isOOV=False):
+    def get_pwt(self, w, t, isOOV=False, lamb=2**(-10)):
         """
-        Returns smoothed p(w|t). Suppose that w and t are from known wordset and tagset, not unknown.
+        Returns smoothed p(w|t), by smoothing less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
         """
         if isOOV: return 1/self.len_tagset # if the w is out-of-vocabulary, then use uniform distribution
-        return ((get_prob(self.wt_bigram_counts, (w, t)) + 0.02) / (
-           get_prob(self.t_unigram_counts, t) +0.02* self.len_wordset * self.len_tagset))
+        return ((get_prob(self.wt_bigram_counts, (w, t)) + lamb) / (
+           get_prob(self.t_unigram_counts, t) + lamb* self.len_wordset * self.len_tagset))
 
 class Ptt:
     """
@@ -314,13 +314,13 @@ else:
     print("todo")
     sys.exit()
 #p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
-p_wt=smoothAdd1(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
+p_wt=smoothAdd(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 pwt = Pwt(pp[2][0], pp[2][1], len(wordsetT), len(tagsetT))
 pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 
 p=pp[1]
-d = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
+#d = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
 #h = AddOneSmoothedDistribution(dataH,dataT)
 # -------- tagging ----------------
 #sys.exit()
