@@ -25,17 +25,20 @@ def get_prob(p, h):
         return 0
 
 
-# ----- estimating parametres, supervised learning --------------
-
-def get_parametres_superv(tags):
-    """
-    Computes uniform, unigram, bigram and trigram distributions from given data.
-    """
+def get_parametres_superv(data_wt):
+    count = len(data_wt)
+    tags = [t for (_, t) in data_wt]
     tags_uniq = Counter(tags)
+    data_uniq = Counter(data_wt)  # Counter([(w, t) for (w, t) in data_wt])
+    p_wt = {(w, t): data_uniq[w, t] / tags_uniq[t] for (w, t) in data_uniq}
+    # todo: v slidech je psano v jinem poradi (tag,w), je to opravdu totez??????
+    # @ add todo: naopak je to len preto, lebo P(vugenerujem w | viem t), ale v dictionary je to jedno, kedze hladas tu pravdepodobnost ale neviem naisto
+    # p_wt=p_wt.union({(w,t):0 for w in {w for (w,_) in data_wt} for t in tags_uniq if (w,t) not in data_uniq })
+    pc = [{(w, t): data_uniq[w, t] for (w, t) in data_uniq}, tags_uniq]
     # constant probability mass (avoiding zeros)
     p_t0 = 1 / len(tags_uniq)
     # unigram probabilities
-    p_t1 = {t: tags_uniq[t] / len(tags) for t in tags_uniq}
+    p_t1 = {t: tags_uniq[t] / count for t in tags_uniq}
     # bigram probabilities
     bigram_tags = Counter(zip(tags[:-1], tags[1:]))
     p_t2 = {(t1, t2): (bigram_tags[t1, t2] / tags_uniq[t1]) for (t1, t2) in bigram_tags}
@@ -43,7 +46,7 @@ def get_parametres_superv(tags):
     trigram_tags = Counter([trig for trig in zip(tags[:-2], tags[1:-1], tags[2:])])
     p_t3 = {(t1, t2, t3): (trigram_tags[t1, t2, t3] / bigram_tags[t1, t2]) for (t1, t2, t3) in trigram_tags}
     p_tt = [p_t0, p_t1, p_t2, p_t3]
-    return p_tt
+    return p_wt, p_tt, pc
 
 
 # ----------------- smoothing EM algorithm------------------------------------------
@@ -52,7 +55,10 @@ def EMiter(data, p, l):
     """An one iteration of EM algorithm."""
     tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
     pp = {
-        (i, j, k): l[3] * get_prob(p[3], (i, j, k)) + l[2] * get_prob(p[2], (j, k)) + l[1] * get_prob(p[1], k) + l[0] * p[0] for (i, j, k) in set(tri)}  # new p'(lambda)
+        (i, j, k): l[3] * get_prob(p[3], (i, j, k)) + l[2] * get_prob(p[2], (j, k)) + l[1] * get_prob(p[1], k) + l[0] *
+                                                                                                                 p[
+                                                                                                                     0]
+        for (i, j, k) in set(tri)}  # new p'(lambda)
     c = [0, 0, 0, 0]
     for (i, j, k) in tri:
         pptemp = pp[(i, j, k)]
@@ -133,15 +139,14 @@ class Ptt:
     # TODO: ČASEM možná vylepšit na nepamatování si celé tabulky, ale dynam.počítání
     p_t = []
 
-    def __init__(self, p, heldout, train):
-        print(len(heldout), len(train))
-        self.p_t = smoothEM(p, heldout, train)  # probabilities p_t1,p_t2,p_t3
+    def __init__(self, pp, heldout, train):
+        self.p_t = smoothEM(pp, heldout, train)  # probabilities p_t1,p_t2,p_t3
 
     def get_ptt(self, t1, t2, t3):
         """
         Returns smoothed p(t3|t1,t2).
         """
-        return self.p_t[t1, t2, t3]  # TODO: Možná udělat časem dynamicky
+        return self.p_t[t3, t1, t2]  # TODO: Možná udělat časem dynamicky
 
 
 def viterbilog(text,tagset,wordset,Pwt,Ptt):
@@ -179,7 +184,7 @@ def viterbilog(text,tagset,wordset,Pwt,Ptt):
                     bestpath=[]
                     maxprob=-float('inf')
                     for (i,j) in V[prev]:
-                        value=V[prev][i,j][0]+math.log(Ptt.get_ptt(i,j,t),2)
+                        value=V[prev][i,j][0]+math.log(Ptt.get_ptt(t,i,j),2)
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
@@ -239,7 +244,7 @@ def viterbi(text,tagset,wordset,Pwt,Ptt,start):
                     bestpath=[]
                     maxprob=0
                     for (i,j) in V[prev]:
-                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                        value=V[prev][i,j][0]*Ptt.get_ptt(t,i,j)
                        # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
@@ -305,18 +310,19 @@ wordsetT = set([w for (w, _) in dataT])
 # ------- computation -------------
 
 if supervised:
-    pp = get_parametres_superv(dataT)  # get p_t from train data, not smoothed yet
+    pp = get_parametres_superv(dataT)  # get p_t a p_wt from test data, not smoothed yet
 else:
     print("todo")
     sys.exit()
 #p_t = smoothEM(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])  # probabilities p_t1,p_t2,p_t3
-#p_wt=smoothAdd(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
+p_wt=smoothAdd(pp[2],[w for (w,_) in dataT],set([t for (_,t) in dataT]))
 #sem by šlo dát i dataH, resp. cele p_wt spocitat i z heldout - zabiralo hodne pameti
 
 pwt = Pwt(dataT,len(tagsetT)*len(wordsetT))
-pt = Ptt(pp, [t for (_, t) in dataH], [t for (_, t) in dataT])
+pt = Ptt(pp[1], [t for (_, t) in dataH], [t for (_, t) in dataT])
 
-#d = LinearSmoothedDistribution(dataH, pp[0],pp[1], pp[2] ,pp[3])
+p=pp[1]
+#d = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
 #h = AddOneSmoothedDistribution(dataH,dataT)
 # -------- tagging ----------------
 #sys.exit()
