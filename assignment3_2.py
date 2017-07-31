@@ -350,11 +350,12 @@ sentence=[]
 v=[]
 c=0
 sentence_end=(STARTw,STARTt)
+# run Viterbi on each sentence of the test data
+print("--- Starting Viterbi --- ")
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
             v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt, sentence_end)
-            v,c=viterbilog([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt)
         tagged=tagged+v+[(STARTt,STARTw)]
         OOVcount+=c
         if len(sentence)==0: sentence_end=(STARTw,STARTt)
