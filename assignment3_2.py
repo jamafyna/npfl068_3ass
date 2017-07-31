@@ -250,13 +250,12 @@ def viterbi(text,tagset,wordset,Pwt,Ptt,start):
                     maxprob=0
                     for (i,j) in V[prev]:
                         value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
-                       # if value==0: Chtělo by to aspoň takovýto treshold, zahodit všechny stavy mající value=0, což může být velmi velmi malé číslo zaokrouhlené na 0
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob*Pwt.get_smoothed_pwt(w,t,isOOV),bestpath+[(w,t)])
+                    if maxprob>0: V[now][bests[1],t]=(maxprob*Pwt.get_smoothed_pwt(w,t,isOOV),bestpath+[(w,t)])
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=0
@@ -367,4 +366,4 @@ for p in dataS:
     
 print('out-of-vocabulary words:',OOVcount)
 o=occuracy(dataS,tagged)
-print('occuracy: o')
+print('occuracy:', o)
