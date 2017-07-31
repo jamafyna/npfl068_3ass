@@ -13,8 +13,8 @@ from classes import LinearSmoothedDistribution
 from classes import AddOneSmoothedDistribution
 
 
-STARTw = "###"
-STARTt = "###"
+STARTw = "###" # start token/token which split sentences
+STARTt = "###" # STARTw for words, STARTt for tags
 
 
 def get_prob(p, h):
@@ -48,55 +48,8 @@ def get_parametres_superv(tags):
 
 # ----------------- smoothing EM algorithm------------------------------------------
 
-def EMiter(data, p, l):
-    """An one iteration of EM algorithm."""
-    tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
-    pp = {
-        (i, j, k): l[3] * get_prob(p[3], (i, j, k)) + l[2] * get_prob(p[2], (j, k)) + l[1] * get_prob(p[1], k) + l[0] * p[0] for (i, j, k) in set(tri)}  # new p'(lambda)
-    c = [0, 0, 0, 0]
-    for (i, j, k) in tri:
-        pptemp = pp[(i, j, k)]
-        c[0] = c[0] + l[0] * p[0] / pptemp
-        c[1] += l[1] * get_prob(p[1], k) / pptemp
-        c[2] += l[2] * get_prob(p[2], (j, k)) / pptemp
-        c[3] += l[3] * get_prob(p[3], (i, j, k)) / pptemp
-    return [i / sum(c) for i in c]  # normalised
-
-
-def EMalgorithm(data, p):  # heldoutdata
-    """EM algorithm, input: data: heldout data, p: probabilities counted form training data """
-    l = [10, 10, 10, 10]  # infinity, due to first while
-    nextl = [0.25, 0.25, 0.25, 0.25]  # lambdas counted in the next iteration
-    e = 0.001  # precision
-    itercount = 0
-    while (abs(l[0] - nextl[0]) >= e or abs(l[1] - nextl[1]) >= e or abs(l[2] - nextl[2]) >= e or abs(
-                l[3] - nextl[3]) >= e):  # expected precision is not yet achieved
-        l = nextl
-        nextl = EMiter(data, p, l)
-        itercount = itercount + 1
-    sout.write("\nSmoothing, EM algorithm:\n")
-    sout.write("\nnumber of iterations:" + str(itercount) + ", precision: " + str(e) + "\n")
-    return nextl
-
 
 # ----------------------------------------------------------------------------------
-def smoothEM(p, heldout, traindata):
-    """
-    Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
-    """
-   
-    l = EMalgorithm(heldout, p)  # get lambdas
-    print("lambdas:",l)
-    tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
-    ttrainset=set(traindata) 
-    pt_em = {
-        (i, j, k): (
-            l[0] * p[0] + l[1] * get_prob(p[1], k) + l[2] * get_prob(p[2], (j, k)) + l[3] * get_prob(p[3], (i, j, k)))
-        # for (i, j, k) in tri}
-        for i in ttrainset for j in ttrainset for k in ttrainset}
-    return pt_em
-
-
 def smoothAdd(pc, data, tagset, lamb=2**(-10)):
     """
     Do smoothing by Adding less than 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
@@ -134,13 +87,61 @@ class Ptt:
     p_t = []
 
     def __init__(self, p, heldout, train):
-        self.p_t = smoothEM(p, heldout, train)  # probabilities p_t1,p_t2,p_t3
+        self.p_t = self.smoothEM(p, heldout, train)  # probabilities p_t1,p_t2,p_t3
 
     def get_ptt(self, t1, t2, t3):
         """
         Returns smoothed p(t3|t1,t2).
         """
         return self.p_t[t1, t2, t3]  # TODO: Možná udělat časem dynamicky
+
+    def smoothEM(self,p, heldout, traindata):
+        """
+        Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
+        """
+       
+        l = self.EMalgorithm(heldout, p)  # get lambdas
+        print("lambdas:",l)
+        tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
+        ttrainset=set(traindata) 
+        pt_em = {
+            (i, j, k): (
+                l[0] * p[0] + l[1] * get_prob(p[1], k) + l[2] * get_prob(p[2], (j, k)) + l[3] * get_prob(p[3], (i, j, k)))
+            # for (i, j, k) in tri}
+            for i in ttrainset for j in ttrainset for k in ttrainset}
+        return pt_em
+
+
+    def EMiter(self,data, p, l):
+        """An one iteration of EM algorithm."""
+        tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
+        pp = {
+            (i, j, k): l[3] * get_prob(p[3], (i, j, k)) + l[2] * get_prob(p[2], (j, k)) + l[1] * get_prob(p[1], k) + l[0] * p[0] for (i, j, k) in set(tri)
+             }  # new p'(lambda)
+        c = [0, 0, 0, 0]
+        for (i, j, k) in tri:
+            pptemp = pp[(i, j, k)]
+            c[0] += l[0] * p[0] / pptemp
+            c[1] += l[1] * get_prob(p[1], k) / pptemp
+            c[2] += l[2] * get_prob(p[2], (j, k)) / pptemp
+            c[3] += l[3] * get_prob(p[3], (i, j, k)) / pptemp
+        return [i / sum(c) for i in c]  # normalised
+
+
+    def EMalgorithm(self,data, p):  # heldoutdata
+        """EM algorithm, input: data: heldout data, p: probabilities counted form training data """
+        l = [10, 10, 10, 10]  # infinity, due to first while
+        nextl = [0.25, 0.25, 0.25, 0.25]  # lambdas counted in the next iteration
+        e = 0.001  # precision
+        itercount = 0
+        while (abs(l[0] - nextl[0]) >= e or abs(l[1] - nextl[1]) >= e or abs(l[2] - nextl[2]) >= e or abs(
+                    l[3] - nextl[3]) >= e):  # expected precision is not yet achieved
+            l = nextl
+            nextl = self.EMiter(data, p, l)
+            itercount = itercount + 1
+        sout.write("\nSmoothing, EM algorithm:\n")
+        sout.write("\nnumber of iterations:" + str(itercount) + ", precision: " + str(e) + "\n")
+        return nextl
 
 
 def viterbilog(text,tagset,wordset,Pwt,Ptt):
