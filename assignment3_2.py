@@ -89,13 +89,15 @@ class Ptt:
     Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
     """
     pl={}
+    p_t_known=[]
 
     def __init__(self, p, heldout, train, less_memory=False):
         print("\n---Smoothing, EM algorithm:---\n")
         self.memory=less_memory
         self.l = self.EMalgorithm(heldout, p)  # computes lambdas
         print("lambdas:\n l0:",self.l[0],"\nl1: ",self.l[1],"\nl2: ",self.l[2],"\nl3: ",self.l[3],"\n")
-        if(not less_memory): self.p_t = self.compute_full(p, heldout, train)  
+        if(not less_memory): self.p_t = self.compute_full(p, heldout, train)
+        self.p_t_known = self.compute_known(p, heldout, train) 
         self.p=p
         self.pl[0]=self.p[0]*self.l[0]
         for i in range(1,4):
@@ -106,20 +108,24 @@ class Ptt:
         """
         Returns smoothed p(t3|t1,t2).
         """
-        if self.memory:
-              return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] * get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
+      #  if self.memory:
+       #       return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] * get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
 
-        else: return self.p_t[t1, t2, t3]
+        #else: return self.p_t[t1, t2, t3]
     
-    def get_prec_ptt(self, t1, t2, t3):
+   # def get_prec_ptt(self, t1, t2, t3):
         if self.memory:
                 return self.pl[0] + get_prob(self.pl[1], t3) + get_prob(self.pl[2], (t2, t3)) + get_prob(self.pl[3], (t1, t2, t3))
         else: return self.p_t[t1, t2, t3]
         
+    def get_ptt_nonzero(self, t1, t2, t3):
+        """
+        Returns linear interpolated (t3|t1,t2), use only for known t1,t2,t3!
+        """
+        return self.p_t_known[t1, t2, t3]
          
     def compute_full(self, p, heldout, traindata):
               
-        tri = [i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])]
         ttrainset=set(traindata) 
         pt_em = {
             (i, j, k): (
@@ -127,6 +133,15 @@ class Ptt:
             for i in ttrainset for j in ttrainset for k in ttrainset}
         return pt_em
 
+    def compute_known(self, p, heldout, traindata):
+              
+        triset = set([i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])])
+        ttrainset=set(traindata) 
+        pt_em = {
+            (i, j, k): (
+                self.l[0] * p[0] + self.l[1] * get_prob(p[1], k) + self.l[2] * get_prob(p[2], (j, k)) + self.l[3] * get_prob(p[3], (i, j, k)))
+            for (i,j,k) in triset}
+        return pt_em
 
     def EMiter(self,data, p, l):
         """An one iteration of EM algorithm."""
@@ -182,7 +197,8 @@ def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram):
         V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
         now=1 # value depends on k which starts from 1
         prev=0
-        treshold=0.00000000000000001
+        if usetrigram: get_ptt_f=Ptt.get_ptt_nonzero
+        else: get_ptt_f=Ptt.get_ptt
         # --- finding the best way
         for k in range(2,len(text)+1):
                 isOOV=False
@@ -200,7 +216,7 @@ def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram):
                     maxprob=0
                     for (i,j) in V[prev]:
                         if(usetrigram and ((i,j,t) not in trigramtagset)): continue
-                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                        value=V[prev][i,j][0]*get_ptt_f(i,j,t)
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
@@ -220,15 +236,12 @@ def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram):
         return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
 
-def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
-        if not usetrigram: warnings.warn("viterbi2 always uses only known trigrams")
-        viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start)
 
-def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
+def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
         """
         Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
         """
-        
+        if not usetrigram: warnings.warn("viterbi2 always uses only known trigrams")
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
         if text[0]==STARTw: 
@@ -243,8 +256,8 @@ def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
         V[0][start]=(0,[start])
         V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
         now=1 # value depends on k which starts from 1
-        prev=0
-        treshold=0.00000000000000001
+        prev=0 
+
         # --- finding the best way
         for k in range(2,len(text)+1):
                 isOOV=False
@@ -256,10 +269,8 @@ def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                     OOVcount+=1
                     isOOV=True
                 for (i,j,t) in trigramtagset:
-                    #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     if (i,j) not in V[prev]: continue
                     value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
-                    #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
                     if ((j,t) not in V[now]) or value>V[now][j,t][0]: # '=' because of very small numbers              
                             V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
                                          V[prev][i,j][1]+[(w,t)])
@@ -296,7 +307,8 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
         V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
         now=1 # value depends on k which starts from 1
         prev=0
-        treshold=0.00000000000000001
+        if usetrigram: get_ptt_f=Ptt.get_ptt_nonzero
+        else: get_ptt_f=Ptt.get_ptt
         # --- finding the best way
         for k in range(2,len(text)+1):
                 isOOV=False
@@ -312,11 +324,9 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
                     bests={}
                     bestpath=[]
                     maxprob=0
-                    #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     for (i,j) in V[prev]:
                         if usetrigram and ((i,j,t) not in trigramtagset): continue
-                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
-                        #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
+                        value=V[prev][i,j][0]*get_ptt_f(i,j,t)
                         if ((j,t) not in V[now]) or value>V[now][j,t][0]:              
                             V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
                                          V[prev][i,j][1]+[(w,t)])
@@ -377,14 +387,14 @@ parser.add_option("-f", "--fast",
                   action="store_true", dest="fast", default=False,
                   help="Use faster algorithmus similar to Viterbi")
 parser.add_option("-t", "--unknowntrigrams",
-                  action="store_true", dest="trigrams", default=False,
+                  action="store_false", dest="trigrams", default=True,
                   help="Use faster algorithmus similar to Viterbi")
 (options, args) = parser.parse_args()
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
 memory = options.memory
-viterbi2 = options.viterbi
+viterbi_bool = options.viterbi
 fast = options.fast
 usetrigram = options.trigrams
 # ------ data preparation ---------
@@ -433,7 +443,7 @@ sentence_end=(STARTw,STARTt)
 print("--- Starting Viterbi --- ")
 
 # choosing which algorithm we want to use
-if viterbi2:
+if viterbi_bool:
     viterbialg=viterbi2
 elif fast:
     viterbialg=viterbi_fast
