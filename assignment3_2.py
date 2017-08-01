@@ -307,10 +307,10 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                     maxprob=0
                     #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     for (i,j) in V[prev]:
-                        if(i,j,t) not in trigramtagset: continue
+                        if (i,j,t) not in trigramtagset: continue
                         value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
                         #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
-                        if ((j,t) not in V[now]) or value>V[now][j,t][0]: # '=' because of very small numbers              
+                        if ((j,t) not in V[now]) or value>V[now][j,t][0]:              
                             V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
                                          V[prev][i,j][1]+[(w,t)])
         # --- final search the best tag sequence
@@ -363,11 +363,19 @@ parser.add_option("-m", "--memory",
 parser.add_option("-u", "--unsupervised",
                   action="store_false", dest="supervised", default=False,
                   help="Use unsupervised method (the default option)")
+parser.add_option("-v", "--viterbi2",
+                  action="store_false", dest="viterbi", default=False,
+                  help="Use second variant of viterbi")
+parser.add_option("-f", "--fast",
+                  action="store_false", dest="fast", default=False,
+                  help="Use faster algorithmus similar to Viterbi")
 (options, args) = parser.parse_args()
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
 memory = options.memory
+viterbi2 = options.viterbi
+fast= options.fast
 
 # ------ data preparation ---------
 
@@ -378,7 +386,7 @@ for line in file:
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data 
 #dataS = data[-40000:]  # testing data
-dataS =  data[-4000:]  # testing data
+dataS =  data[-400:]  # testing data
 if dataS[0]!=[(STARTw,STARTt)]: dataS= [(STARTw,STARTt)]+dataS
 data = []  # for gc
 OOVcount=0 # unknown words
@@ -413,11 +421,19 @@ c=0
 sentence_end=(STARTw,STARTt)
 # run Viterbi on each sentence of the test data
 print("--- Starting Viterbi --- ")
+
+# choosing which algorithm we want to use
+if viterbi2:
+    viterbialg=viterbi2
+elif fast:
+    viterbialg=viterbi_fast
+else:
+    viterbialg=viterbi
+
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
-            #v,c=viterbi_fast([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
-            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
+            v,c=viterbialg([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
         tagged=tagged+v+[(STARTt,STARTw)]
         for t in tagged: print(t)
         OOVcount+=c
