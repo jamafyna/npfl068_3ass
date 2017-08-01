@@ -159,33 +159,34 @@ class Ptt:
         return nextl
 
 
-# ------------ LOGARITMICKÝ VITERBI -------------------------------------
+# ------------------------------------------------------------------------------
+# ---------------------PUVODNI VITERBI ----------------------------------------
 
-
-def viterbilog(text,tagset,wordset,Pwt,Ptt):
+def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
+        """
+        Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+        """
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
-        tagsetcontainsSTART=False
-        while STARTt in tagset: 
-            tagset.remove(STARTt)
-            tagsetcontainsSTART=True 
-            # we dont want to have this tag in the middle of the tag sequence,  
-            # for sure while instead of only remove
         if text[0]==STARTw: 
             warnings.warn("inconsistend data, start tokens",Warning)
-        else: text=[(STARTw, STARTt), (STARTw, STARTt)]+text 
+        else: text=[(STARTw, STARTt)]+text 
         V={}    # structure for remember viterbi computation
                 # V[time][state]=(probability,path) where state==(tag1,tag2)
         path={} # the best path to some state
         V[0]={} 
         V[1]={}
-        # --- initialisation, starting state
-        V[1][STARTt,STARTt]=(0,[(STARTw,STARTt),(STARTw,STARTt)])
         OOVcount=0
+        # --- initialisation, starting state
+        V[0][start]=(1,[start])
+        V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
+        now=1 # value depends on k which starts from 1
+        prev=0
+        treshold=0.00000000000000001
         # --- finding the best way
-        for k in range(2,len(text)):
+        for k in range(2,len(text)+1):
                 isOOV=False
-                w=text[k]
+                w=text[k-1]
                 now=k%2        # k modulo 2 instead of k; it is sufficient to remember 
                 prev=(now+1)%2 # instead of k-1;          only actual and previous time
                 V[now]={}
@@ -193,28 +194,78 @@ def viterbilog(text,tagset,wordset,Pwt,Ptt):
                     OOVcount+=1
                     isOOV=True
                 for t in tagset:
+                    if t==STARTt: continue
                     bests={}
                     bestpath=[]
-                    maxprob=-float('inf')
+                    maxprob=0
                     for (i,j) in V[prev]:
-                        value=V[prev][i,j][0]+math.log(Ptt.get_ptt(i,j,t),2)
+                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob+math.log(Pwt.get_smoothed_pwt(w,t,isOOV),2),bestpath+[(w,t)])
-        if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
+                    V[now][bests[1],t]=(maxprob*(Pwt.get_smoothed_pwt(w,t,isOOV)),bestpath+[(w,t)])
         # --- final search the best tag sequence
-        maxprob=-float('inf')
+        maxprob=0
         ends={}              # the best end state
         for s in V[now]:
                 if V[now][s][0]>=maxprob:
                     maxprob=V[now][s][0]
                     ends=s
-        if(maxprob==-float('inf')):warnings.warn("not changed max proability at the end")
+        if maxprob==0 & len(text)>1: 
+            warnings.warn("zero maxprobability at the end")
         return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
+
+def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
+        """
+        Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+        """
+        if len(text)==0: return []
+        isOOV=False # indicates if proceeded word is out-of-vocabulary
+        if text[0]==STARTw: 
+            warnings.warn("inconsistend data, start tokens",Warning)
+        else: text=[(STARTw, STARTt)]+text 
+        V={}    # structure for remember viterbi computation
+                # V[time][state]=(probability,path) where state==(tag1,tag2)
+        V[0]={} 
+        V[1]={}
+        OOVcount=0
+        # --- initialisation, starting state
+        V[0][start]=(0,[start])
+        V[1][STARTt,STARTt]=(1,[start,(STARTw,STARTt)])
+        now=1 # value depends on k which starts from 1
+        prev=0
+        treshold=0.00000000000000001
+        # --- finding the best way
+        for k in range(2,len(text)+1):
+                isOOV=False
+                w=text[k-1]
+                now=k%2        # k modulo 2 instead of k; it is sufficient to remember 
+                prev=(now+1)%2 # instead of k-1;          only actual and previous time
+                V[now]={}
+                if w not in wordset:
+                    OOVcount+=1
+                    isOOV=True
+                for (i,j,t) in trigramtagset:
+                    #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
+                    if (i,j) not in V[prev]: continue
+                    value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                    #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
+                    if ((j,t) not in V[now]) or value>V[now][j,t][0]: # '=' because of very small numbers              
+                            V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
+                                         V[prev][i,j][1]+[(w,t)])
+        # --- final search the best tag sequence
+        maxprob=0
+        ends={}              # the best end state
+        for s in V[now]:
+                if V[now][s][0]>=maxprob:
+                    maxprob=V[now][s][0]
+                    ends=s
+        if maxprob==0 & len(text)>1: 
+            warnings.warn("zero maxprobability at the end")
+        return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
 # ----------------- VITERBI ----------------------------------------------
 
@@ -224,12 +275,6 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
         """
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
-        tagsetcontainsSTART=False
-        while STARTt in tagset: 
-            tagset.remove(STARTt)
-            tagsetcontainsSTART=True 
-            # we dont want to have this tag in the middle of the tag sequence,  
-            # for sure while instead of only remove
         if text[0]==STARTw: 
             warnings.warn("inconsistend data, start tokens",Warning)
         else: text=[(STARTw, STARTt)]+text 
@@ -256,6 +301,7 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                     OOVcount+=1
                     isOOV=True
                 for t in tagset:
+                    if t==STARTt: continue
                     bests={}
                     bestpath=[]
                     maxprob=0
@@ -267,8 +313,6 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                         if ((j,t) not in V[now]) or value>V[now][j,t][0]: # '=' because of very small numbers              
                             V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
                                          V[prev][i,j][1]+[(w,t)])
-                    print("DEBUG: #stavů ",sum([1 for (i,j) in V[now] if j==t]))
-        if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=0
         ends={}              # the best end state
@@ -333,8 +377,8 @@ for line in file:
     data.append((w, t))
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data 
-#dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]  # testing data
-dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-4000:]  # testing data
+#dataS = data[-40000:]  # testing data
+dataS =  data[-4000:]  # testing data
 if dataS[0]!=[(STARTw,STARTt)]: dataS= [(STARTw,STARTt)]+dataS
 data = []  # for gc
 OOVcount=0 # unknown words
@@ -372,6 +416,7 @@ print("--- Starting Viterbi --- ")
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
+            #v,c=viterbi_fast([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
             v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
         tagged=tagged+v+[(STARTt,STARTw)]
         for t in tagged: print(t)
