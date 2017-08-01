@@ -364,10 +364,10 @@ parser.add_option("-u", "--unsupervised",
                   action="store_false", dest="supervised", default=False,
                   help="Use unsupervised method (the default option)")
 parser.add_option("-v", "--viterbi2",
-                  action="store_false", dest="viterbi", default=False,
+                  action="store_true", dest="viterbi", default=False,
                   help="Use second variant of viterbi")
 parser.add_option("-f", "--fast",
-                  action="store_false", dest="fast", default=False,
+                  action="store_true", dest="fast", default=False,
                   help="Use faster algorithmus similar to Viterbi")
 (options, args) = parser.parse_args()
 file_name = args[0]
@@ -376,7 +376,6 @@ supervised = options.supervised
 memory = options.memory
 viterbi2 = options.viterbi
 fast= options.fast
-
 # ------ data preparation ---------
 
 data = []
