@@ -44,7 +44,7 @@ def get_parametres_superv(tags):
     trigram_tags = Counter([trig for trig in zip(tags[:-2], tags[1:-1], tags[2:])])
     p_t3 = {(t1, t2, t3): (trigram_tags[t1, t2, t3] / bigram_tags[t1, t2]) for (t1, t2, t3) in trigram_tags}
     p_tt = [p_t0, p_t1, p_t2, p_t3]
-    return p_tt
+    return p_tt, set(trigram_tags)
 
 
 
@@ -218,7 +218,7 @@ def viterbilog(text,tagset,wordset,Pwt,Ptt):
 
 # ----------------- VITERBI ----------------------------------------------
 
-def viterbi(text,tagset,wordset,Pwt,Ptt,start):
+def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
         """
         Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
         """
@@ -259,16 +259,15 @@ def viterbi(text,tagset,wordset,Pwt,Ptt,start):
                     bests={}
                     bestpath=[]
                     maxprob=0
-                    partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
+                    #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     for (i,j) in V[prev]:
-                        #value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
-                        value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
-                        if value>=maxprob: # '=' because of very small numbers  
-                            bests[0]=i
-                            bests[1]=j
-                            maxprob=value
-                            bestpath=V[prev][i,j][1]
-                    if maxprob>0: V[now][bests[1],t]=(maxprob*Pwt.get_smoothed_pwt(w,t,isOOV),bestpath+[(w,t)])
+                        if(i,j,t) not in trigramtagset: continue
+                        value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
+                        #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
+                        if ((j,t) not in V[now]) or value>V[now][j,t][0]: # '=' because of very small numbers              
+                            V[now][j,t]=(value*Pwt.get_smoothed_pwt(w,t,isOOV),
+                                         V[prev][i,j][1]+[(w,t)])
+                    print("DEBUG: #stavů ",sum([1 for (i,j) in V[now] if j==t]))
         if tagsetcontainsSTART: tagset.add(STARTt)  # to be the same as at start
         # --- final search the best tag sequence
         maxprob=0
@@ -320,9 +319,6 @@ parser.add_option("-m", "--memory",
 parser.add_option("-u", "--unsupervised",
                   action="store_false", dest="supervised", default=False,
                   help="Use unsupervised method (the default option)")
-parser.add_option("-m", "--memory",
-                  action="store_false", dest="supervised", default=False,
-                  help="Use less memory (the default is opposite)")
 (options, args) = parser.parse_args()
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
@@ -337,7 +333,8 @@ for line in file:
     data.append((w, t))
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data 
-dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]  # testing data
+#dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-40000:]  # testing data
+dataS = [(STARTw, STARTt), (STARTw, STARTt)] + data[-4000:]  # testing data
 if dataS[0]!=[(STARTw,STARTt)]: dataS= [(STARTw,STARTt)]+dataS
 data = []  # for gc
 OOVcount=0 # unknown words
@@ -347,7 +344,7 @@ wordsetT = set([w for (w, _) in dataT]) #set of words
 # ------- computation -------------
 
 if supervised:
-    pp = get_parametres_superv([t for (_,t) in dataT]) 
+    pp, trig_tag_set = get_parametres_superv([t for (_,t) in dataT]) 
          # get distribution of tags from train data, not smoothed yet
 else:
     # Baum-Welch training
@@ -375,9 +372,9 @@ print("--- Starting Viterbi --- ")
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
-            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, pwt, pt, sentence_end)
+            v,c=viterbi([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
         tagged=tagged+v+[(STARTt,STARTw)]
-       # for t in tagged: print(t)
+        for t in tagged: print(t)
         OOVcount+=c
         if len(sentence)==0: sentence_end=(STARTw,STARTt)
         else: sentence_end=sentence[len(sentence)-1]
@@ -390,4 +387,3 @@ print("---VITERBI ENDED ---")
 print('out-of-vocabulary words:',OOVcount)
 o=occuracy(dataS,tagged)
 print('occuracy:', o)
-for t in tagged:print(t)
