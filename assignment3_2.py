@@ -162,7 +162,7 @@ class Ptt:
 # ------------------------------------------------------------------------------
 # ---------------------PUVODNI VITERBI ----------------------------------------
 
-def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
+def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram):
         """
         Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
         """
@@ -199,13 +199,15 @@ def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                     bestpath=[]
                     maxprob=0
                     for (i,j) in V[prev]:
+                        if(usetrigram and ((i,j,t) not in trigramtagset)): continue
                         value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
                         if value>=maxprob: # '=' because of very small numbers  
                             bests[0]=i
                             bests[1]=j
                             maxprob=value
                             bestpath=V[prev][i,j][1]
-                    V[now][bests[1],t]=(maxprob*(Pwt.get_smoothed_pwt(w,t,isOOV)),bestpath+[(w,t)])
+                    if bests!={}:
+                        V[now][bests[1],t]=(maxprob*(Pwt.get_smoothed_pwt(w,t,isOOV)),bestpath+[(w,t)])
         # --- final search the best tag sequence
         maxprob=0
         ends={}              # the best end state
@@ -218,10 +220,15 @@ def viterbi_fast(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
         return V[now][ends][1][2:],OOVcount # only [2:] because of start tokens
 
 
+def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
+        if not usetrigram: warnings.warn("viterbi2 always uses only known trigrams")
+        viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start)
+
 def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
         """
         Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
         """
+        
         if len(text)==0: return []
         isOOV=False # indicates if proceeded word is out-of-vocabulary
         if text[0]==STARTw: 
@@ -269,7 +276,7 @@ def viterbi2(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
 
 # ----------------- VITERBI ----------------------------------------------
 
-def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
+def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start,usetrigram=True):
         """
         Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
         """
@@ -307,7 +314,7 @@ def viterbi(text,tagset,wordset,trigramtagset,Pwt,Ptt,start):
                     maxprob=0
                     #partprob=Ptt.pl[0]+get_prob(Ptt.pl[1],t)
                     for (i,j) in V[prev]:
-                        if (i,j,t) not in trigramtagset: continue
+                        if usetrigram and ((i,j,t) not in trigramtagset): continue
                         value=V[prev][i,j][0]*Ptt.get_ptt(i,j,t)
                         #value=V[prev][i,j][0]*(partprob+get_prob(Ptt.pl[2],(j,t))+get_prob(Ptt.pl[3],(i,j,t)))
                         if ((j,t) not in V[now]) or value>V[now][j,t][0]:              
@@ -369,13 +376,17 @@ parser.add_option("-v", "--viterbi2",
 parser.add_option("-f", "--fast",
                   action="store_true", dest="fast", default=False,
                   help="Use faster algorithmus similar to Viterbi")
+parser.add_option("-t", "--unknowntrigrams",
+                  action="store_true", dest="trigrams", default=False,
+                  help="Use faster algorithmus similar to Viterbi")
 (options, args) = parser.parse_args()
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 supervised = options.supervised
 memory = options.memory
 viterbi2 = options.viterbi
-fast= options.fast
+fast = options.fast
+usetrigram = options.trigrams
 # ------ data preparation ---------
 
 data = []
@@ -432,7 +443,7 @@ else:
 for p in dataS:
     if p==(STARTw,STARTt): 
         if(sentence!=[]):
-            v,c=viterbialg([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end)
+            v,c=viterbialg([w for (w,_) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end,usetrigram)
         tagged=tagged+v+[(STARTt,STARTw)]
         for t in tagged: print(t)
         OOVcount+=c
