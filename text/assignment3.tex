@@ -35,7 +35,9 @@ Součástí úkolu jsou Python3 skripty \textbf{assignment3\_1.py} a \textbf{ass
 
 Použili sme Brillov tagger z knižnice NLTK.
 Ako počiatočný tagger sme použili jednoduchý unigramový tagger, ktorý si  zapamätá najčastejšie značku pre každé slovo trénovacích dat.
-Použili sme počiatočnú množinu 18 pravidel, rovnaké ako v ukázke v knihe\footnote{Volne dostupné na \url{http://www.nltk.org/book/}}. Počet pravidiel je maximálne 200 (prednastavená hodnota NLTK).
+Použili sme počiatočnú množinu 24 vzorov\footnote{NLTK má tieto vzory ako súčasť knižnice} (template), ktoré pôvodne použil Brill. Pre angličtinu sme početpravidiel obmedzili\footnote{Limit sa pri týchto počtoch vždy naplní, čiže limit je rovnaký ako počet pravidiel.} na 247, pre češtinu na 500.
+Tieto konkrétne hodnoty sme dostali skúšaním niekoľkých hodnôt.
+Všeobecne platí, že väčšie množstvo pravidiel môže mierne zlepšiť presnosť, ale výrazne spomaňuje.
 
 \subsection*{Výsledky}
 
@@ -47,14 +49,14 @@ Použili sme počiatočnú množinu 18 pravidel, rovnaké ako v ukázke v knihe\
 \toprule
 \textbf{Angličtina} & \textbf{Přesnost} \\
 \midrule
-1. stupeň & 0.8878314603811958 \\
-2. stupeň & 0.8877681340735528 \\
-3. stupeň & 0.8591886684372233 \\
-4. stupeň & 0.8916271557338613 \\
+1. stupeň & 0.8910645842567726 \\
+2. stupeň & 0.88881069669247 \\
+3. stupeň & 0.8602301723689006 \\
+4. stupeň & 0.8931381232741104 \\
 5. stupeň & 0.8927185098345708 \\
 \midrule
-Průměr   & 0.88382678569208084 \\
-$\sigma$ & 0.01247811683956135 \\
+Průměr   & 0.885192417285 \\
+$\sigma$ & 0.0125734981194 \\
 \bottomrule
 \end{tabular}
 \hskip 50pt
@@ -62,14 +64,14 @@ $\sigma$ & 0.01247811683956135 \\
 \toprule
 \textbf {Čeština} & \textbf{Přesnost} \\
 \midrule
-1. stupeň & 0.7611722195653329 \\
-2. stupeň & 0.7784951378925554 \\
-3. stupeň & 0.7446763540290621 \\
-4. stupeň & 0.7794976095512296 \\
-5. stupeň & 0.7772650116698494 \\
+1. stupeň & 0.7738987193793506 \\
+2. stupeň & 0.7888304373239811 \\
+3. stupeň & 0.7535799207397622 \\
+4. stupeň & 0.7922554742597533 \\
+5. stupeň & 0.7880596223212392 \\
 \midrule
-Průměr   & 0.76822126654160594 \\
-$\sigma$ & 0.01355396354317235 \\
+Průměr   & 0.779324834805 \\
+$\sigma$ & 0.0143254860843 \\
 \bottomrule
 \end{tabular}
 \caption{Přesnost (accuracy) pro Brillův tagger pro oba jazyky.}
