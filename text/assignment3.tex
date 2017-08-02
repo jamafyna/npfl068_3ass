@@ -34,7 +34,7 @@ Součástí úkolu jsou Python3 skripty \textbf{assignment3\_1.py} a \textbf{ass
 \section*{Task 1}
 
 Použili sme Brillov tagger z knižnice NLTK.
-Ako počiatočný tagger sme použili jednoduchý unigramový tagger, ktorý si  zapamätá najčastejšie značku pre každé slovo trénovacích dat.
+Ako počiatočný tagger sme použili jednoduchý unigramový tagger, ktorý si  zapamätá najčastejšie značku pre každé slovo trénovacích dat a pre neznáme slová vráti špecialnú značku ``None''.
 Použili sme počiatočnú množinu 24 vzorov\footnote{NLTK má tieto vzory ako súčasť knižnice} (template), ktoré pôvodne použil Brill. Pre angličtinu sme početpravidiel obmedzili\footnote{Limit sa pri týchto počtoch vždy naplní, čiže limit je rovnaký ako počet pravidiel.} na 247, pre češtinu na 500.
 Tieto konkrétne hodnoty sme dostali skúšaním niekoľkých hodnôt.
 Všeobecne platí, že väčšie množstvo pravidiel môže mierne zlepšiť presnosť, ale výrazne spomaňuje.
@@ -57,6 +57,9 @@ Všeobecne platí, že väčšie množstvo pravidiel môže mierne zlepšiť pre
 \midrule
 Průměr   & 0.885192417285 \\
 $\sigma$ & 0.0125734981194 \\
+\midrule
+Průmer triv. & 0.865374314735\\
+$\sigma$ triv. & 0.0143254860843 \\
 \bottomrule
 \end{tabular}
 \hskip 50pt
@@ -71,7 +74,10 @@ $\sigma$ & 0.0125734981194 \\
 5. stupeň & 0.7880596223212392 \\
 \midrule
 Průměr   & 0.779324834805 \\
-$\sigma$ & 0.0143254860843 \\
+$\sigma$ & 0.0124922171647 \\
+\midrule
+Průmer triv. & 0.738888267001\\
+$\sigma$ triv. & 0.0134321134672 \\
 \bottomrule
 \end{tabular}
 \caption{Přesnost (accuracy) pro Brillův tagger pro oba jazyky.}
