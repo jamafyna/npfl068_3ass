@@ -11,48 +11,23 @@ from sys import stdout as sout
 from collections import Counter
 from classes import LinearSmoothedDistribution
 from classes import AddOneSmoothedDistribution
-from functions import baum_welch
+from collections import Counter
+from functions import get_initial_parameters, baum_welch
 
 STARTw = "###"  # start token/token which split sentences
 STARTt = "###"  # STARTw for words, STARTt for tags
 
 
-def get_prob(p, h):
-    """ Returns a corresponding value from the given tuple if an item is in the tuple, otherwise returns zero."""
-    if h in p:
-        return p[h]
-    else:
-        return 0
+# @ nechcem ti do toho kecať, ale načo znovu objavovať koleso
+# @ dictionary má metódu get(key, default) ktorá spraví presne to, čo chceš
+# @ potom je dobré používať defualtdict/Counter keď to je možné
 
-
-# ----- estimating parametres, supervised learning --------------
-
-def get_parametres_superv(tags):
-    """
-    Computes uniform, unigram, bigram and trigram distributions from given data.
-    """
-    tags_uniq = Counter(tags)
-    # constant probability mass (avoiding zeros)
-    p_t0 = 1 / len(tags_uniq)
-    # unigram probabilities
-    p_t1 = {t: tags_uniq[t] / len(tags) for t in tags_uniq}
-    # bigram probabilities
-    bigram_tags = Counter(zip(tags[:-1], tags[1:]))
-    p_t2 = {(t1, t2): (bigram_tags[t1, t2] / tags_uniq[t1]) for (t1, t2) in bigram_tags}
-    # trigram probabilities
-    trigram_tags = Counter([trig for trig in zip(tags[:-2], tags[1:-1], tags[2:])])
-    p_t3 = {(t1, t2, t3): (trigram_tags[t1, t2, t3] / bigram_tags[t1, t2]) for (t1, t2, t3) in trigram_tags}
-    p_tt = [p_t0, p_t1, p_t2, p_t3]
-    return p_tt, set(trigram_tags)
-
-
-def smoothAdd(pc, data, tagset, lamb=2 ** (-10)):
-    """
-    Do smoothing by Adding less than 1, need counts of c(t,w) and c(h) from train data and need test data for smooting.
-    """
-    pwt = {(w, t): ((get_prob(pc[0], (w, t)) + lamb) / (get_prob(pc[1], t) + lamb * len(wordsetT) * len(tagset))) for w
-           in wordsetT for t in tagset}
-    return pwt
+# def get_prob(p, h):
+#     """ Returns a corresponding value from the given tuple if an item is in the tuple, otherwise returns zero."""
+#     if h in p:
+#         return p[h]
+#     else:
+#         return 0
 
 
 # ------------------ ADD SMOOTHING -----------------------------------
@@ -84,7 +59,8 @@ class Pwt:
 
 class Ptt:
     """
-    Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities form train data, heldout data fo estimate lambdas and testing data.
+    Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities
+    form train data, heldout data fo estimate lambdas and testing data.
     """
     pl = {}
     p_t_known = []
@@ -94,7 +70,8 @@ class Ptt:
         self.memory = less_memory
         self.l = self.EMalgorithm(heldout, p)  # computes lambdas
         print("lambdas:\n l0:", self.l[0], "\nl1: ", self.l[1], "\nl2: ", self.l[2], "\nl3: ", self.l[3], "\n")
-        if (not less_memory): self.p_t = self.compute_full(p, heldout, train)
+        if not less_memory:
+            self.p_t = self.compute_full(p, heldout, train)
         self.p_t_known = self.compute_known(p, heldout, train)
         self.p = p
         self.pl[0] = self.p[0] * self.l[0]
@@ -106,14 +83,14 @@ class Ptt:
         Returns smoothed p(t3|t1,t2).
         """
         #  if self.memory:
-        #       return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] * get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
+        #       return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] *\
+        #  get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
 
         # else: return self.p_t[t1, t2, t3]
 
         # def get_prec_ptt(self, t1, t2, t3):
         if self.memory:
-            return self.pl[0] + get_prob(self.pl[1], t3) + get_prob(self.pl[2], (t2, t3)) + get_prob(self.pl[3],
-                                                                                                     (t1, t2, t3))
+            return self.pl[0] + self.pl[1][t3] + self.pl[2][(t2, t3)] + self.pl[3][(t1, t2, t3)]
         else:
             return self.p_t[t1, t2, t3]
 
@@ -128,8 +105,8 @@ class Ptt:
         ttrainset = set(traindata)
         pt_em = {
             (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * get_prob(p[1], k) + self.l[2] * get_prob(p[2], (j, k)) + self.l[
-                    3] * get_prob(p[3], (i, j, k)))
+                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
+                    3] * p[3][(i, j, k)])
             for i in ttrainset for j in ttrainset for k in ttrainset}
         return pt_em
 
@@ -139,8 +116,8 @@ class Ptt:
         ttrainset = set(traindata)
         pt_em = {
             (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * get_prob(p[1], k) + self.l[2] * get_prob(p[2], (j, k)) + self.l[
-                    3] * get_prob(p[3], (i, j, k)))
+                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
+                    3] * p[3][(i, j, k)])
             for (i, j, k) in triset}
         return pt_em
 
@@ -148,19 +125,16 @@ class Ptt:
         """An one iteration of EM algorithm."""
         tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
         pp = {
-            (i, j, k): l[3] * get_prob(p[3], (i, j, k)) + l[2] * get_prob(p[2], (j, k)) + l[1] * get_prob(p[1], k) + l[
-                                                                                                                         0] *
-                                                                                                                     p[
-                                                                                                                         0]
+            (i, j, k): l[3] * p[3][(i, j, k)] + l[2] * p[2][(j, k)] + l[1] * p[1][k] + l[0] * p[0]
             for (i, j, k) in set(tri)
             }  # new p'(lambda)
         c = [0, 0, 0, 0]
         for (i, j, k) in tri:
             pptemp = pp[(i, j, k)]
             c[0] += l[0] * p[0] / pptemp
-            c[1] += l[1] * get_prob(p[1], k) / pptemp
-            c[2] += l[2] * get_prob(p[2], (j, k)) / pptemp
-            c[3] += l[3] * get_prob(p[3], (i, j, k)) / pptemp
+            c[1] += l[1] * p[1][k] / pptemp
+            c[2] += l[2] * p[2][(j, k)] / pptemp
+            c[3] += l[3] * p[3][(i, j, k)] / pptemp
         return [i / sum(c) for i in c]  # normalised
 
     def EMalgorithm(self, data, p):  # heldoutdata
@@ -183,7 +157,8 @@ class Ptt:
 
 def viterbi_fast(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram):
     """
-    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
+    and first half of a start state (usually end of previous sentence or start token).
     """
     if len(text) == 0: return []
     isOOV = False  # indicates if proceeded word is out-of-vocabulary
@@ -245,7 +220,8 @@ def viterbi_fast(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigr
 
 def viterbi2(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=True):
     """
-    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
+    and first half of a start state (usually end of previous sentence or start token).
     """
     if not usetrigram: warnings.warn("viterbi2 always uses only known trigrams")
     if len(text) == 0: return []
@@ -297,7 +273,8 @@ def viterbi2(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=T
 
 def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=True):
     """
-    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset), and first half of a start state (usually end of previous sentence or start token).
+    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
+    and first half of a start state (usually end of previous sentence or start token).
     """
     if len(text) == 0: return []
     isOOV = False  # indicates if proceeded word is out-of-vocabulary
@@ -354,7 +331,8 @@ def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=Tr
 
 
 # ------------------- EVALUATION ------------------------------------------
-def occuracy(right, computed):
+
+def accuracy(right, computed):
     if len(right) != len(computed):
         warnings.warn("inconsistend data, different length of test and computed solution", Warning)
     correct = 0
@@ -364,7 +342,7 @@ def occuracy(right, computed):
             raise Exception("inconsistent data, different words in test and computed")
         if right[i][1] == computed[i][1]: correct += 1
     print("right tagged: ", correct, ", all: ", allc)
-    return (correct / allc)
+    return correct / allc
 
 
 ############################################################################
@@ -395,6 +373,7 @@ parser.add_option("-f", "--fast",
 parser.add_option("-t", "--unknowntrigrams",
                   action="store_false", dest="trigrams", default=True,
                   help="Use a faster algorithmus similar to Viterbi")
+
 (options, args) = parser.parse_args()
 file_name = args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
@@ -414,7 +393,8 @@ dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data 
 # dataS = data[-40000:]  # testing data
 dataS = data[-400:]  # testing data
-if dataS[0] != [(STARTw, STARTt)]: dataS = [(STARTw, STARTt)] + dataS
+if dataS[0] != [(STARTw, STARTt)]:
+    dataS = [(STARTw, STARTt)] + dataS
 data = []  # for gc
 OOVcount = 0  # unknown words
 tagsetT = set([t for (_, t) in dataT])  # set of tages
@@ -423,7 +403,7 @@ wordsetT = set([w for (w, _) in dataT])  # set of words
 # ------- computation -------------
 
 if supervised:
-    pp, trig_tag_set = get_parametres_superv([t for (_, t) in dataT])
+    pp, trig_tag_set = get_initial_parameters([t for (_, t) in dataT])
     # get distribution of tags from train data, not smoothed yet
 else:
     # Baum-Welch training
@@ -463,7 +443,7 @@ for p in dataS:
             v, c = viterbialg([w for (w, _) in sentence], tagsetT, wordsetT, trig_tag_set, pwt, pt, sentence_end,
                               usetrigram)
         tagged = tagged + v + [(STARTt, STARTw)]
-        for t in tagged: print(t)
+        # for t in tagged: print(t)
         OOVcount += c
         if len(sentence) == 0:
             sentence_end = (STARTw, STARTt)
@@ -477,5 +457,5 @@ for p in dataS:
 
 print("---VITERBI ENDED ---")
 print('out-of-vocabulary words:', OOVcount)
-o = occuracy(dataS, tagged)
-print('occuracy:', o)
+o = accuracy(dataS, tagged)
+print('accuracy:', o)

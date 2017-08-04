@@ -3,6 +3,34 @@ from collections import Counter, defaultdict
 from classes import Linear, LexicalDistribution
 
 
+def get_initial_parameters(tags):
+    """
+    Computes uniform, unigram, bigram and trigram distributions from given data.
+    """
+    tags_uniq = Counter(tags)
+    # constant probability mass (avoiding zeros)
+    p_t0 = 1 / len(tags_uniq)
+    # unigram probabilities
+    p_t1 = Counter(tags)
+    # bigram probabilities
+    bigram_tags = Counter(zip(tags, tags[1:]))
+    p_t2 = Counter(bigram_tags)
+    # p_t2 = {(t1, t2): (bigram_tags[t1, t2] / tags_uniq[t1]) for (t1, t2) in bigram_tags}
+    # trigram probabilities
+    trigram_tags = Counter([trig for trig in zip(tags, tags[1:-1], tags[2:])])
+    p_t3 = Counter(trigram_tags)
+    # p_t3 = {(t1, t2, t3): (trigram_tags[t1, t2, t3] / bigram_tags[t1, t2]) for (t1, t2, t3) in trigram_tags}
+    for key in p_t3:
+        p_t3[key] /= p_t2[key[:2]]
+    for key in p_t2:
+        p_t2[key] /= p_t1[key[0]]
+    for key in p_t1:
+        p_t1[key] /= len(tags)
+    p_tt = [p_t0, p_t1, p_t2, p_t3]
+    return p_tt, set(trigram_tags)
+
+
+# todo: remove this function
 def get_distributions(data_wt):
     # get the length of data
     count = len(data_wt)
@@ -132,7 +160,7 @@ def baum_welch(training_data, held_out_data, epsilon=0.001):
     word_counts = Counter(words)
     # words that are rarely in the test data are also unlikely to be in the testing data
     # but it significantly reduces the size of the matrix
-    vocabulary = [w for w in word_counts if word_counts[w] > 5]
+    vocabulary = [w for w in word_counts if word_counts[w] > 1]
     vocabulary.remove('###')
     # make the starting state 0
     vocabulary = ['###'] + vocabulary

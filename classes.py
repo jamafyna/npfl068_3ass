@@ -5,9 +5,9 @@ from collections import Counter, defaultdict
 class LinearSmoothedDistribution:
     def __init__(self, data, p_0, p_1, p_2, p_3):
         self.p_0 = p_0
-        self.p_1 = defaultdict(lambda: 0, p_1)
-        self.p_2 = defaultdict(lambda: 0, p_2)
-        self.p_3 = defaultdict(lambda: 0, p_3)
+        self.p_1 = p_1
+        self.p_2 = p_2
+        self.p_3 = p_3
         data = [t for w, t in data]
         trigrams = zip(data, data[1:], data[2:])
         self.lambdas = []
@@ -18,13 +18,13 @@ class LinearSmoothedDistribution:
         return self.lambdas[3] * self.p_3[t1, t2, t3] + self.lambdas[2] * self.p_2[t2, t3] + \
                self.lambdas[1] * self.p_1[t3] + self.lambdas[0] * self.p_0
 
-    def p_helper(self, t1, t2, t3, lambdas):
+    def _compute_p(self, t1, t2, t3, lambdas):
         """Returns the probability of a trigram under the current model"""
         return lambdas[3] * self.p_3[t1, t2, t3] + lambdas[2] * self.p_2[t2, t3] + \
                lambdas[1] * self.p_1[t3] + lambdas[0] * self.p_0
 
     @staticmethod
-    def normalize(vector):
+    def _normalize(vector):
         """Returns a normalized vector"""
         s = sum(vector)
         return vector / s
@@ -38,13 +38,13 @@ class LinearSmoothedDistribution:
         # compute expected counts
         while True:
             for t1, t2, t3 in trigrams:
-                p_smoothed = self.p_helper(t1, t2, t3, lambdas)
+                p_smoothed = self._compute_p(t1, t2, t3, lambdas)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t3] / p_smoothed
                 c_l[2] += lambdas[2] * self.p_2[t2, t3] / p_smoothed
                 c_l[3] += lambdas[3] * self.p_3[t1, t2, t3] / p_smoothed
             # compute next lambdas
-            next_l = self.normalize(c_l)
+            next_l = self._normalize(c_l)
             if all(x < epsilon for x in lambdas - next_l):
                 print('DEBUG: EM smoothing converged')
                 break
@@ -67,7 +67,7 @@ class Linear:
         """Returns the probability of a trigram under the current model"""
         return self.lambdas[2] * self.p_2[t1, t2] + self.lambdas[1] * self.p_1[t2] + self.lambdas[0] * self.p_0
 
-    def p_helper(self, t1, t2, lambdas):
+    def compute_p(self, t1, t2, lambdas):
         """Returns the probability of a trigram under the current model"""
         return lambdas[2] * self.p_2[t1, t2] + lambdas[1] * self.p_1[t2] + lambdas[0] * self.p_0
 
@@ -86,7 +86,7 @@ class Linear:
         # compute expected counts
         while True:
             for t1, t2 in trigrams:
-                p_smoothed = self.p_helper(t1, t2, lambdas)
+                p_smoothed = self.compute_p(t1, t2, lambdas)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t2] / p_smoothed
                 c_l[2] += lambdas[2] * self.p_2[t1, t2] / p_smoothed
