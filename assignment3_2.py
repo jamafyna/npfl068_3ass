@@ -10,9 +10,8 @@ from sys import stdin as sin
 from sys import stdout as sout
 from collections import Counter
 from classes import LinearSmoothedDistribution
-from classes import AddOneSmoothedDistribution
 from collections import Counter
-from functions import get_initial_parameters, baum_welch
+from functions import get_initial_parameters, viterbi, baum_welch
 
 STARTw = "###"  # start token/token which split sentences
 STARTt = "###"  # STARTw for words, STARTt for tags
@@ -122,7 +121,7 @@ class Ptt:
         return pt_em
 
     def EMiter(self, data, p, l):
-        """An one iteration of EM algorithm."""
+        """One iteration of EM algorithm."""
         tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
         pp = {
             (i, j, k): l[3] * p[3][(i, j, k)] + l[2] * p[2][(j, k)] + l[1] * p[1][k] + l[0] * p[0]
@@ -135,6 +134,7 @@ class Ptt:
             c[1] += l[1] * p[1][k] / pptemp
             c[2] += l[2] * p[2][(j, k)] / pptemp
             c[3] += l[3] * p[3][(i, j, k)] / pptemp
+        # print(i, j, k, ':', c)
         return [i / sum(c) for i in c]  # normalised
 
     def EMalgorithm(self, data, p):  # heldoutdata
@@ -252,7 +252,8 @@ def viterbi2(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=T
             OOVcount += 1
             isOOV = True
         for (i, j, t) in trigramtagset:
-            if (i, j) not in V[prev]: continue
+            if (i, j) not in V[prev]:
+                continue
             value = V[prev][i, j][0] * Ptt.get_ptt(i, j, t)
             if ((j, t) not in V[now]) or value > V[now][j, t][0]:  # '=' because of very small numbers
                 V[now][j, t] = (value * Pwt.get_smoothed_pwt(w, t, isOOV),
@@ -271,63 +272,7 @@ def viterbi2(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=T
 
 # ----------------- VITERBI ----------------------------------------------
 
-def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=True):
-    """
-    Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
-    and first half of a start state (usually end of previous sentence or start token).
-    """
-    if len(text) == 0: return []
-    isOOV = False  # indicates if proceeded word is out-of-vocabulary
-    if text[0] == STARTw:
-        warnings.warn("inconsistend data, start tokens", Warning)
-    else:
-        text = [(STARTw, STARTt)] + text
-    V = {}  # structure for remember viterbi computation
-    # V[time][state]=(probability,path) where state==(tag1,tag2)
-    path = {}  # the best path to some state
-    V[0] = {}
-    V[1] = {}
-    OOVcount = 0
-    # --- initialisation, starting state
-    V[0][start] = (0, [start])
-    V[1][STARTt, STARTt] = (1, [start, (STARTw, STARTt)])
-    now = 1  # value depends on k which starts from 1
-    prev = 0
-    if usetrigram:
-        get_ptt_f = Ptt.get_ptt_nonzero
-    else:
-        get_ptt_f = Ptt.get_ptt
-    # --- finding the best way
-    for k in range(2, len(text) + 1):
-        isOOV = False
-        w = text[k - 1]
-        now = k % 2  # k modulo 2 instead of k; it is sufficient to remember
-        prev = (now + 1) % 2  # instead of k-1;          only actual and previous time
-        V[now] = {}
-        if w not in wordset:
-            OOVcount += 1
-            isOOV = True
-        for t in tagset:
-            if t == STARTt: continue
-            bests = {}
-            bestpath = []
-            maxprob = 0
-            for (i, j) in V[prev]:
-                if usetrigram and ((i, j, t) not in trigramtagset): continue
-                value = V[prev][i, j][0] * get_ptt_f(i, j, t)
-                if ((j, t) not in V[now]) or value > V[now][j, t][0]:
-                    V[now][j, t] = (value * Pwt.get_smoothed_pwt(w, t, isOOV),
-                                    V[prev][i, j][1] + [(w, t)])
-    # --- final search the best tag sequence
-    maxprob = 0
-    ends = {}  # the best end state
-    for s in V[now]:
-        if V[now][s][0] >= maxprob:
-            maxprob = V[now][s][0]
-            ends = s
-    if maxprob == 0 & len(text) > 1:
-        warnings.warn("zero maxprobability at the end")
-    return V[now][ends][1][2:], OOVcount  # only [2:] because of start tokens
+
 
 
 # ------------------- EVALUATION ------------------------------------------
@@ -375,13 +320,13 @@ parser.add_option("-t", "--unknowntrigrams",
                   help="Use a faster algorithmus similar to Viterbi")
 
 (options, args) = parser.parse_args()
-file_name = args[0]
+file_name = 'data/texten2.ptg'  # args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
-supervised = options.supervised
-memory = options.memory
-viterbi_bool = options.viterbi
-fast = options.fast
-usetrigram = options.trigrams
+supervised = True  # options.supervised
+memory = False  # options.memory
+viterbi_bool = False  # options.viterbi
+fast = False  # options.fast
+usetrigram = True  # .trigrams
 
 # ------ data preparation ---------
 
@@ -390,7 +335,7 @@ for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
-dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data 
+dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data
 # dataS = data[-40000:]  # testing data
 dataS = data[-400:]  # testing data
 if dataS[0] != [(STARTw, STARTt)]:
@@ -418,6 +363,7 @@ pwt = Pwt(dataT, len(wordsetT), len(tagsetT))
 # distribution of pairs (word,tag),smoothed
 
 pt = Ptt(pp, [t for (_, t) in dataH], [t for (_, t) in dataT], memory)
+# pt = LinearSmoothedDistribution(dataH, pp[0], pp[1], pp[2], pp[3])
 # distrib. of tags, smoothed
 
 # -------- tagging by Viterbi----------------
