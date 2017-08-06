@@ -34,7 +34,7 @@ parser.add_option("-k", "--known-states",
                   help="Use only the states from the training data, enforces smoothing")
 
 (options, args) = parser.parse_args()
-file_name = 'data/texten2.ptg'  # args[0]
+file_name = args[0]
 print('INFO: Processing the file "', file_name, '"')
 unk = not options.known
 if not unk:
