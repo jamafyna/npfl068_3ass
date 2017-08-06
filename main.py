@@ -36,10 +36,10 @@ parser.add_option("-k", "--known-states",
 (options, args) = parser.parse_args()
 file_name = 'data/texten2.ptg'  # args[0]
 print('INFO: Processing the file "', file_name, '"')
-unk = True  # not options.known
+unk = not options.known
 if not unk:
     print('INFO: Limiting the sates of states to the states from the training data')
-lex = True  # options.lex
+lex = options.lex
 oov = options.oov
 supervised = options.supervised
 
