@@ -13,11 +13,18 @@ class LinearSmoothedDistribution:
         trigrams = list(zip(held_out_data, held_out_data[1:], held_out_data[2:]))
         self.lambdas = []
         self.lambdas = self.em_smoothing(trigrams)
+        # store precomputed values
+        self.distribution = Counter()
 
     def p(self, t1, t2, t3):
         """Returns the probability of a trigram under the current model"""
-        return self.lambdas[3] * self.p_3[t1, t2, t3] + self.lambdas[2] * self.p_2[t2, t3] + \
-               self.lambdas[1] * self.p_1[t3] + self.lambdas[0] * self.p_0
+        # if the trigram was already precomputed just return it
+        if (t1, t2, t3) in self.distribution:
+            return self.distribution[t1, t2, t3]
+        # else compute, store and return it
+        self.distribution[t1, t2, t3] = self.lambdas[3] * self.p_3[t1, t2, t3] + self.lambdas[2] * self.p_2[
+            t2, t3] + self.lambdas[1] * self.p_1[t3] + self.lambdas[0] * self.p_0
+        return self.distribution[t1, t2, t3]
 
     def _compute_p(self, t1, t2, t3, lambdas):
         """Returns the probability of a trigram under the current model"""
@@ -40,6 +47,8 @@ class LinearSmoothedDistribution:
         while True:
             c_l = [0, 0, 0, 0]
             for t1, t2, t3 in trigrams:
+                if t3 == '###':
+                    continue
                 p_smoothed = self._compute_p(t1, t2, t3, lambdas)
                 c_l[0] += lambdas[0] * self.p_0 / p_smoothed
                 c_l[1] += lambdas[1] * self.p_1[t3] / p_smoothed
@@ -60,45 +69,38 @@ class Pwt:
     """
     Computes the initial distribution of p(w|t) and smooths it with add less than one smoothing
     """
-    wt_counts = []
-    t_counts = []
-    vocab_size = 0
 
-    def __init__(self, data, wordset_size, tagset_size, hard_zeros=True):
+    # wt_counts = []
+    # t_counts = []
+    # vocab_size = 0
+
+    def __init__(self, data, wordset_size, tagset_size):
         self.t_counts = Counter([t for (_, t) in data])
-        self.vocabulary = set([w for (w, _) in data])
+        # self.vocabulary = set([w for (w, _) in data])
         self.wt_counts = Counter(data)
         self.vocab_size = wordset_size * tagset_size
-        self.tagset_len = tagset_size
-        self.hard_zeros = hard_zeros
+        # self.tagset_len = tagset_size
 
-    def get_smoothed_pwt(self, w, t, isOOV, lamb=2 ** (-10)):
-        """
-        Returns smoothed p(w|t), by smoothing less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
-        """
-        # if the w is out-of-vocabulary, then use uniform distribution
-        if isOOV:
-            return 1 / self.tagset_len
-        return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+    # def get_smoothed_pwt(self, w, t, isOOV, lamb=2 ** (-10)):
+    #     """
+    #     Returns smoothed p(w|t), by smoothing less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
+    #     """
+    #     # if the w is out-of-vocabulary, then use uniform distribution
+    #     if isOOV:
+    #         return 1 / self.tagset_len
+    #     return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
 
     def p(self, w, t, lamb=2 ** (-10)):
         """
         Returns smoothed p(w|t) by adding less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
         """
-        if w == '~~~':
-            if t == '~~~':
-                return 1
-            else:
-                return 0
         if w == '###':
             if t == '###':
                 return 1
             else:
                 return 0
-        if w not in self.vocabulary:
-            return lamb / (self.t_counts[t] + lamb * self.vocab_size)
-        if self.wt_counts[w, t] == 0 and self.hard_zeros:
-            return 0
+        # if w not in self.vocabulary:
+        #     return lamb / (self.t_counts[t] + lamb * self.vocab_size)
         return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
 
 
@@ -124,26 +126,45 @@ class PwtUnknown:
         self.vocab_size = wordset_size * tagset_size
         self.tagset_len = tagset_size
         self.hard_zeros = hard_zeros
+        self.distribution = Counter()
 
+    def p(self, w, t):
+        """
+        Returns the p(w|t), smoothed by adding less than 1.
+        """
+        if w not in self.vocabulary:
+            w = '@UNK'
+        # if it was precomputed
+        if (w, t) in self.distribution:
+            return self.distribution[w, t]
+        # precompute and store
+        # if w not in self.vocabulary:
+        #     return (self.wt_counts['@UNK', t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+        # if self.wt_counts[w, t] == 0 and self.hard_zeros:
+        #     return 0
+        # return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+        self.distribution[w, t] = self.wt_counts[w, t] / self.t_counts[t]
+        return self.distribution[w, t]
+
+
+class PwtUnknownSmooth(PwtUnknown):
     def p(self, w, t, lamb=2 ** (-10)):
         """
         Returns the p(w|t), smoothed by adding less than 1.
         """
-        if w == '~~~':
-            if t == '~~~':
-                return 1
-            else:
-                return 0
         if w == '###':
             if t == '###':
                 return 1
             else:
                 return 0
         if w not in self.vocabulary:
-            return (self.wt_counts['@UNK', t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
-        if self.wt_counts[w, t] == 0 and self.hard_zeros:
-            return 0
-        return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+            w = '@UNK'
+        # if it was precomputed
+        if (w, t) in self.distribution:
+            return self.distribution[w, t]
+        # precompute, store and return
+        self.distribution[w, t] = (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+        return self.distribution[w, t]
 
 
 class Ptt:
@@ -154,61 +175,64 @@ class Ptt:
     pl = {}
     p_t_known = []
 
-    def __init__(self, p, heldout, train, less_memory=False):
-        print("\n---Smoothing, EM algorithm:---\n")
+    def __init__(self, ps, heldout, train, less_memory=False):
         self.memory = less_memory
-        self.l = self.EMalgorithm(heldout, p)  # computes lambdas
-        print("lambdas:\n l0:", self.l[0], "\nl1: ", self.l[1], "\nl2: ", self.l[2], "\nl3: ", self.l[3], "\n")
-        if not less_memory:
-            self.p_t = self.compute_full(p, heldout, train)
-        self.p_t_known = self.compute_known(p, heldout, train)
-        self.p = p
-        self.pl[0] = self.p[0] * self.l[0]
-        for i in range(1, 4):
-            self.pl[i] = {t: (self.p[i][t] * self.l[i]) for t in p[i]}
+        # compute lambdas
+        self.l = self.EMalgorithm(heldout, ps)
+        print("INFO: [l0, l1, l2, l3] =", self.l)
+        # if not less_memory:
+        #     self.p_t = self.compute_full(ps, heldout, train)
+        # self.p_t_known = self.compute_known(ps, heldout, train)
+        self.ps = ps
+        self.pl0 = self.ps[0] * self.l[0]
+        # for i in range(1, 4):
+        #     self.pl[i] = Counter()
+        #     for t in ps[i]:
+        #         self.pl[i][t] = self.ps[i][t] * self.l[i]
+        self.distribution = Counter()
 
-    def get_ptt(self, t1, t2, t3):
-        """
-        Returns smoothed p(t3|t1,t2).
-        """
-        #  if self.memory:
-        #       return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] *\
-        #  get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
+    # def get_ptt(self, t1, t2, t3):
+    #     """
+    #     Returns smoothed p(t3|t1,t2).
+    #     """
+    #     if self.memory:
+    #         return self.pl0 + self.pl[1][t3] + self.pl[2][(t2, t3)] + self.pl[3][(t1, t2, t3)]
+    #     else:
+    #         return self.p_t[t1, t2, t3]
 
-        # else: return self.p_t[t1, t2, t3]
+    def p(self, t1, t2, t3):
+        if (t1, t2, t3) in self.distribution:
+            return self.distribution[t1, t2, t3]
+        self.distribution[t1, t2, t3] = self.pl0 + self.l[1] * self.ps[1][t3] + self.l[2] * self.ps[2][t2, t3] + \
+                                        self.l[3] * self.ps[3][t1, t2, t3]
+        return self.distribution[t1, t2, t3]
 
-        # def get_prec_ptt(self, t1, t2, t3):
-        if self.memory:
-            return self.pl[0] + self.pl[1][t3] + self.pl[2][(t2, t3)] + self.pl[3][(t1, t2, t3)]
-        else:
-            return self.p_t[t1, t2, t3]
-
-    def get_ptt_nonzero(self, t1, t2, t3):
-        """
-        Returns linear interpolated (t3|t1,t2), use only for known t1,t2,t3!
-        """
-        return self.p_t_known[t1, t2, t3]
-
-    def compute_full(self, p, heldout, traindata):
-
-        ttrainset = set(traindata)
-        pt_em = {
-            (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
-                    3] * p[3][(i, j, k)])
-            for i in ttrainset for j in ttrainset for k in ttrainset}
-        return pt_em
-
-    def compute_known(self, p, heldout, traindata):
-
-        triset = set([i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])])
-        ttrainset = set(traindata)
-        pt_em = {
-            (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
-                    3] * p[3][(i, j, k)])
-            for (i, j, k) in triset}
-        return pt_em
+    # def get_ptt_nonzero(self, t1, t2, t3):
+    #     """
+    #     Returns linear interpolated (t3|t1,t2), use only for known t1,t2,t3!
+    #     """
+    #     return self.p_t_known[t1, t2, t3]
+    #
+    # def compute_full(self, p, heldout, traindata):
+    #
+    #     ttrainset = set(traindata)
+    #     pt_em = {
+    #         (i, j, k): (
+    #             self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
+    #                 3] * p[3][(i, j, k)])
+    #         for i in ttrainset for j in ttrainset for k in ttrainset}
+    #     return pt_em
+    #
+    # def compute_known(self, p, heldout, traindata):
+    #
+    #     triset = set([i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])])
+    #     ttrainset = set(traindata)
+    #     pt_em = {
+    #         (i, j, k): (
+    #             self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
+    #                 3] * p[3][(i, j, k)])
+    #         for (i, j, k) in triset}
+    #     return pt_em
 
     def EMiter(self, data, p, l):
         """One iteration of EM algorithm."""
@@ -227,16 +251,15 @@ class Ptt:
         # print(i, j, k, ':', c)
         return [i / sum(c) for i in c]  # normalised
 
-    def EMalgorithm(self, data, p):  # heldoutdata
+    def EMalgorithm(self, data, p, e=0.001):  # heldoutdata
         """EM algorithm, input: data: heldout data, p: probabilities counted form training data """
         l = [10, 10, 10, 10]  # infinity, due to first while
         nextl = [0.25, 0.25, 0.25, 0.25]  # lambdas counted in the next iteration
-        e = 0.001  # precision
         itercount = 0
         while (abs(l[0] - nextl[0]) >= e or abs(l[1] - nextl[1]) >= e or abs(l[2] - nextl[2]) >= e or abs(
                     l[3] - nextl[3]) >= e):  # expected precision is not yet achieved
             l = nextl
             nextl = self.EMiter(data, p, l)
             itercount = itercount + 1
-        sout.write("\nnumber of iterations:" + str(itercount) + ", precision: " + str(e) + "\n")
+        print("INFO: EM converged in", str(itercount), "iterations with convergence criterion", str(e))
         return nextl

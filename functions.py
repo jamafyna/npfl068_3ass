@@ -18,16 +18,17 @@ def get_initial_parameters(tags):
     p_t1 = Counter(tags)
     # bigram probabilities
     bigram_tags = Counter(zip(tags, tags[1:]))
-    if ('~~~', '###') in bigram_tags.keys():
-        bigram_tags.pop(('~~~', '###'))
+    # iterlist = list(bigram_tags.keys())
+    # if ('~~~', '###') in iterlist:
+    #     bigram_tags.pop(('~~~', '###'))
     p_t2 = Counter(bigram_tags)
     # p_t2 = {(t1, t2): (bigram_tags[t1, t2] / tags_uniq[t1]) for (t1, t2) in bigram_tags}
     # trigram probabilities
     trigram_tags = Counter([trig for trig in zip(tags, tags[1:-1], tags[2:])])
-    if ('~~~', '###', '###') in trigram_tags.keys():
-        trigram_tags.pop(('~~~', '###', '###'))
-    if ('~~~', '~~~', '###') in trigram_tags.keys():
-        trigram_tags.pop(('~~~', '~~~', '###'))
+    # if ('~~~', '###', '###') in trigram_tags.keys():
+    #     trigram_tags.pop(('~~~', '###', '###'))
+    # if ('~~~', '~~~', '###') in trigram_tags.keys():
+    #     trigram_tags.pop(('~~~', '~~~', '###'))
     p_t3 = Counter(trigram_tags)
     # p_t3 = {(t1, t2, t3): (trigram_tags[t1, t2, t3] / bigram_tags[t1, t2]) for (t1, t2, t3) in trigram_tags}
     for key in p_t3:
@@ -36,8 +37,7 @@ def get_initial_parameters(tags):
         p_t2[key] /= p_t1[key[0]]
     for key in p_t1:
         p_t1[key] /= len(tags)
-    p_tt = [p_t0, p_t1, p_t2, p_t3]
-    return p_tt, set(trigram_tags)
+    return [p_t0, p_t1, p_t2, p_t3], set(trigram_tags)
 
 
 # todo: remove this function
@@ -234,10 +234,10 @@ def fix_sentence_boundaries(data):
         if e != ('###', '###'):
             sentence.append(e)
         else:
-            fixed_data.append([('###', '###'), ('###', '###')] + sentence + [('~~~', '~~~'), ('~~~', '~~~')])
+            fixed_data.append([('###', '###'), ('###', '###')] + sentence + [('###', '###'), ('###', '###')])
             sentence = []
     if sentence:
-        fixed_data.append([('###', '###'), ('###', '###')] + sentence + [('~~~', '~~~'), ('~~~', '~~~')])
+        fixed_data.append([('###', '###'), ('###', '###')] + sentence + [('###', '###'), ('###', '###')])
     return fixed_data
 
 
@@ -340,7 +340,7 @@ def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_stat
         # next trellis stage completly generated, now forget the old one
         alpha_t = alpha_new
         alpha_new = defaultdict(lambda: 0)
-    last = ('~~~', '~~~')
+    last = ('###', '###')
     tagged = [last[0], last[0]]
     for i in range(len(sentence) - 1, 1, -1):
         last = psi[i, last]
