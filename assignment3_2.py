@@ -9,150 +9,13 @@ from optparse import OptionParser
 from sys import stdin as sin
 from sys import stdout as sout
 from collections import Counter
-from classes import LinearSmoothedDistribution
+from classes import LinearSmoothedDistribution, Pwt, Ptt
 from collections import Counter
 from functions import get_initial_parameters, viterbi, baum_welch
 
 STARTw = "###"  # start token/token which split sentences
 STARTt = "###"  # STARTw for words, STARTt for tags
 
-
-# @ nechcem ti do toho kecať, ale načo znovu objavovať koleso
-# @ dictionary má metódu get(key, default) ktorá spraví presne to, čo chceš
-# @ potom je dobré používať defualtdict/Counter keď to je možné
-
-# def get_prob(p, h):
-#     """ Returns a corresponding value from the given tuple if an item is in the tuple, otherwise returns zero."""
-#     if h in p:
-#         return p[h]
-#     else:
-#         return 0
-
-
-# ------------------ ADD SMOOTHING -----------------------------------
-
-class Pwt:
-    """
-    Computes the initial distribution of p(w|t) and smooths it.
-    """
-    wt_counts = []
-    t_counts = []
-    vocab_size = 0
-
-    def __init__(self, data, wordset_size, tagset_size):
-        self.t_counts = Counter([t for (_, t) in data])
-        self.wt_counts = Counter(data)  # Counter([(w, t) for (w, t) in data_wt])
-        self.vocab_size = wordset_size * tagset_size
-        self.tagset_len = tagset_size
-
-    def get_smoothed_pwt(self, w, t, isOOV, lamb=2 ** (-10)):
-        """
-        Returns smoothed p(w|t), by smoothing less than 1. Suppose that w and t are from known wordset and tagset, not unknown.
-        """
-        # if the w is out-of-vocabulary, then use uniform distribution
-        if isOOV: return 1 / self.tagset_len
-        return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
-
-
-# --------------- EM SMOOTHING ----------------------------------------------
-
-class Ptt:
-    """
-    Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities
-    form train data, heldout data fo estimate lambdas and testing data.
-    """
-    pl = {}
-    p_t_known = []
-
-    def __init__(self, p, heldout, train, less_memory=False):
-        print("\n---Smoothing, EM algorithm:---\n")
-        self.memory = less_memory
-        self.l = self.EMalgorithm(heldout, p)  # computes lambdas
-        print("lambdas:\n l0:", self.l[0], "\nl1: ", self.l[1], "\nl2: ", self.l[2], "\nl3: ", self.l[3], "\n")
-        if not less_memory:
-            self.p_t = self.compute_full(p, heldout, train)
-        self.p_t_known = self.compute_known(p, heldout, train)
-        self.p = p
-        self.pl[0] = self.p[0] * self.l[0]
-        for i in range(1, 4):
-            self.pl[i] = {t: (self.p[i][t] * self.l[i]) for t in p[i]}
-
-    def get_ptt(self, t1, t2, t3):
-        """
-        Returns smoothed p(t3|t1,t2).
-        """
-        #  if self.memory:
-        #       return self.l[0] * self.p[0] + self.l[1] * get_prob(self.p[1], t3) + self.l[2] *\
-        #  get_prob(self.p[2], (t2, t3)) + self.l[3] * get_prob(self.p[3], (t1, t2, t3))
-
-        # else: return self.p_t[t1, t2, t3]
-
-        # def get_prec_ptt(self, t1, t2, t3):
-        if self.memory:
-            return self.pl[0] + self.pl[1][t3] + self.pl[2][(t2, t3)] + self.pl[3][(t1, t2, t3)]
-        else:
-            return self.p_t[t1, t2, t3]
-
-    def get_ptt_nonzero(self, t1, t2, t3):
-        """
-        Returns linear interpolated (t3|t1,t2), use only for known t1,t2,t3!
-        """
-        return self.p_t_known[t1, t2, t3]
-
-    def compute_full(self, p, heldout, traindata):
-
-        ttrainset = set(traindata)
-        pt_em = {
-            (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
-                    3] * p[3][(i, j, k)])
-            for i in ttrainset for j in ttrainset for k in ttrainset}
-        return pt_em
-
-    def compute_known(self, p, heldout, traindata):
-
-        triset = set([i for i in zip(traindata[:-2], traindata[1:-1], traindata[2:])])
-        ttrainset = set(traindata)
-        pt_em = {
-            (i, j, k): (
-                self.l[0] * p[0] + self.l[1] * p[1][k] + self.l[2] * p[2][(j, k)] + self.l[
-                    3] * p[3][(i, j, k)])
-            for (i, j, k) in triset}
-        return pt_em
-
-    def EMiter(self, data, p, l):
-        """One iteration of EM algorithm."""
-        tri = [u for u in zip(data[:-2], data[1:-1], data[2:])]
-        pp = {
-            (i, j, k): l[3] * p[3][(i, j, k)] + l[2] * p[2][(j, k)] + l[1] * p[1][k] + l[0] * p[0]
-            for (i, j, k) in set(tri)
-            }  # new p'(lambda)
-        c = [0, 0, 0, 0]
-        for (i, j, k) in tri:
-            pptemp = pp[(i, j, k)]
-            c[0] += l[0] * p[0] / pptemp
-            c[1] += l[1] * p[1][k] / pptemp
-            c[2] += l[2] * p[2][(j, k)] / pptemp
-            c[3] += l[3] * p[3][(i, j, k)] / pptemp
-        # print(i, j, k, ':', c)
-        return [i / sum(c) for i in c]  # normalised
-
-    def EMalgorithm(self, data, p):  # heldoutdata
-        """EM algorithm, input: data: heldout data, p: probabilities counted form training data """
-        l = [10, 10, 10, 10]  # infinity, due to first while
-        nextl = [0.25, 0.25, 0.25, 0.25]  # lambdas counted in the next iteration
-        e = 0.001  # precision
-        itercount = 0
-        while (abs(l[0] - nextl[0]) >= e or abs(l[1] - nextl[1]) >= e or abs(l[2] - nextl[2]) >= e or abs(
-                    l[3] - nextl[3]) >= e):  # expected precision is not yet achieved
-            l = nextl
-            nextl = self.EMiter(data, p, l)
-            itercount = itercount + 1
-        sout.write("\nnumber of iterations:" + str(itercount) + ", precision: " + str(e) + "\n")
-        return nextl
-
-
-# ------------------------------------------------------------------------------
 # ---------------------PUVODNI VITERBI ----------------------------------------
 
 def viterbi_fast(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram):
@@ -285,7 +148,8 @@ def accuracy(right, computed):
     for i in range(0, allc - 1):
         if right[i][0] != computed[i][0]:
             raise Exception("inconsistent data, different words in test and computed")
-        if right[i][1] == computed[i][1]: correct += 1
+        if right[i][1] == computed[i][1]:
+            correct += 1
     print("right tagged: ", correct, ", all: ", allc)
     return correct / allc
 
@@ -322,11 +186,11 @@ parser.add_option("-t", "--unknowntrigrams",
 (options, args) = parser.parse_args()
 file_name = 'data/texten2.ptg'  # args[0]
 file = open(file_name, encoding="iso-8859-2", mode='rt')
-supervised = True  # options.supervised
-memory = False  # options.memory
-viterbi_bool = False  # options.viterbi
-fast = False  # options.fast
-usetrigram = True  # .trigrams
+supervised = options.supervised
+memory = options.memory
+viterbi_bool = options.viterbi
+fast = options.fast
+usetrigram = options.trigrams
 
 # ------ data preparation ---------
 
@@ -336,8 +200,8 @@ for line in file:
     data.append((w, t))
 dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
 dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data
-# dataS = data[-40000:]  # testing data
-dataS = data[-400:]  # testing data
+dataS = data[-40000:]  # testing data
+# dataS = data[-400:]  # testing data
 if dataS[0] != [(STARTw, STARTt)]:
     dataS = [(STARTw, STARTt)] + dataS
 data = []  # for gc

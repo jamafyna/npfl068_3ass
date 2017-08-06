@@ -7,7 +7,7 @@ from nltk.tag import brill, brill_trainer, UnigramTagger
 
 
 def train_brill_tagger(train_data, num_rules, **kwargs):
-    """Trains the Brill's tagger on the given data with the initial rules from the demo and initial unigram tagger"""
+    """Trains the Brill's tagger on the given data with the initial rules from the paper, and initial unigram tagger"""
     # use the initial rules from the NLTK demonstration
     templates = brill.brill24()
     # use unigram tagger as the initial tagger

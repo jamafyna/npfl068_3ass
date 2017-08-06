@@ -1,8 +1,7 @@
 import warnings
-
 import numpy as np
 from collections import Counter, defaultdict
-from classes import LexicalDistribution
+from classes import Pwt as LexicalDistribution
 
 STARTw = "###"  # start token/token which split sentences
 STARTt = "###"  # STARTw for words, STARTt for tags
@@ -149,7 +148,7 @@ def collect_counts_and_reestimate(alfa, beta, t_matrix, e_matrix, sentence, n):
             # get all the positions where the word is in this sentence
             indices = [i + 1 for i, x in enumerate(sentence) if x == word]
             # estimate the emission probability of s emitting y as
-            # probability of state s emitting y in any time (sum over times)
+            # probability of state s emitting y at any time (sum over times)
             # over total probability of being in that state at any time (at the beginning we are in imaginary state 0)
             e_matrix_new[ii, word] = np.sum(gamma[ii, indices]) / np.sum(gamma[ii, 1:])
     # normalize rows, because they represent emittion distribution of the state
@@ -242,7 +241,7 @@ def fix_sentence_boundaries(data):
     return fixed_data
 
 
-def viterbi(text, tagset, wordset, trigramtagset, Pwt, transition_p, start, usetrigram=True, threshold=0):
+def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=True):
     """
     Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
     and first half of a start state (usually end of previous sentence or start token).
@@ -268,10 +267,10 @@ def viterbi(text, tagset, wordset, trigramtagset, Pwt, transition_p, start, uset
     V[1][STARTt, STARTt] = (1, [start, (STARTw, STARTt)])
     now = 1  # value depends on k which starts from 1
     prev = 0
-    # if usetrigram:
-    #     get_ptt_f = Ptt.get_ptt_nonzero
-    # else:
-    #     get_ptt_f = Ptt.get_ptt
+    if usetrigram:
+        get_ptt_f = Ptt.get_ptt_nonzero
+    else:
+        get_ptt_f = Ptt.get_ptt
     # --- finding the best way
     for k in range(2, len(text) + 1):
         isOOV = False
@@ -293,8 +292,8 @@ def viterbi(text, tagset, wordset, trigramtagset, Pwt, transition_p, start, uset
                 if usetrigram and ((i, j, t) not in trigramtagset):
                     continue
 
-                # value = V[prev][i, j][0] * Ptt.get_ptt_f(i, j, t)
-                value = V[prev][i, j][0] * transition_p.p(i, j, t)
+                value = V[prev][i, j][0] * get_ptt_f(i, j, t)
+                # value = V[prev][i, j][0] * transition_p.p(i, j, t)
                 if ((j, t) not in V[now]) or value > V[now][j, t][0]:
                     V[now][j, t] = (value * Pwt.get_smoothed_pwt(w, t, isOOV),
                                     V[prev][i, j][1] + [(w, t)])
@@ -310,39 +309,43 @@ def viterbi(text, tagset, wordset, trigramtagset, Pwt, transition_p, start, uset
     return V[now][ends][1][2:], OOVcount  # only [2:] because of start tokens
 
 
-def vite(sentence, tagset, emission_p, transition_p, usetrigram=True, threshold=0):
+def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_states=True, threshold=0):
     # maximum probability in that state in time t = 0
     alpha_t = defaultdict(lambda: 0)
     # deterministic, starting state is the only possible state
     u = '###'
     v = '###'
     alpha_t[('###', '###')] = 1
-    alpha_new = defaultdict(lambda: 0)
-    # back-track function
-    psi = defaultdict(lambda: 0)
+    alpha_new = Counter()  # use Counter, because defaultdict creates the element upon being touched
+    # back-track pointers
+    psi = defaultdict(lambda: ('###', '###'))
     psi[(1, v)] = u
+    if unknown_states:
+        iteration_set = tagset
     # iterate over the observations
     for time in range(2, len(sentence)):
         # iterate over all the previous trellis stage
         for u, v in alpha_t.keys():
             if alpha_t[u, v] > threshold:
                 # consider all the possible next tags
-                for w in tagset:
+                if not unknown_states:
+                    iteration_set = possible_next[v]
+                for w in iteration_set:
                     # simulate transitions to w over the k-th observation
-                    q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.get_smoothed_pwt(sentence[time][0], w)
-                    # if a better alpha to the state (v, w) from the previous trellis stage
-                    # remember the best one
+                    q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], w)
+                    # if a better alpha to the state (v, w) from the previous trellis stage, remember the better one
                     if q > alpha_new[v, w]:
                         alpha_new[v, w] = q
                         psi[(time, (v, w))] = (u, v)
-        # next trellis stage completly generated
-        # forget the old one
+        # next trellis stage completly generated, now forget the old one
         alpha_t = alpha_new
         alpha_new = defaultdict(lambda: 0)
     last = ('~~~', '~~~')
     tagged = [last[0], last[0]]
     for i in range(len(sentence) - 1, 1, -1):
         last = psi[i, last]
+        # print(last)
         tagged.append(last[0])
+    # print('---')
     tagged.reverse()
     return tagged
