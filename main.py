@@ -34,12 +34,12 @@ parser.add_option("-k", "--known-states",
                   help="Use only the states from the training data, enforces smoothing")
 
 (options, args) = parser.parse_args()
-file_name = args[0]
+file_name = 'data/texten2.ptg'  # args[0]
 print('INFO: Processing the file "', file_name, '"')
-unk = not options.known
+unk = True  # not options.known
 if not unk:
     print('INFO: Limiting the sates of states to the states from the training data')
-lex = options.lex
+lex = True  # options.lex
 oov = options.oov
 supervised = options.supervised
 
@@ -100,7 +100,7 @@ else:
 # ptt = LinearSmoothedDistribution(dataH, p[0], p[1], p[2], p[3])
 ptt = Ptt(p, [t for (_, t) in dataH], [t for (_, t) in dataT])
 possible_next_tags = defaultdict(lambda: set())
-for x, y in zip(dataT, dataT[1:]):
+for x, y in zip([t for (_, t) in dataT], [t for (_, t) in dataT][1:]):
     possible_next_tags[x].add(y)
 # for key in possible_next_tags.keys():
 #     possible_next_tags[x].add('~~~')
