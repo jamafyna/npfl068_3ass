@@ -101,7 +101,7 @@ class Pwt:
         if (w, t) in self.distribution:
             return self.distribution[w, t]
         self.distribution[w, t] = (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
-        return self.distribution
+        return self.distribution[w, t]
 
 
 class PwtUnknown:
