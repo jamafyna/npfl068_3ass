@@ -2,14 +2,9 @@
 from collections import defaultdict
 from optparse import OptionParser
 
-from functions import baum_welch, fix_sentence_boundaries, vite, get_initial_parameters
+from functions import baum_welch, fix_sentence_boundaries, vite, get_initial_parameters, viterbi_prunned
 from classes import LinearSmoothedDistribution, Ptt
 from classes import PwtUnknown, Pwt, PwtUnknownSmooth
-
-import numpy as np
-import sys
-
-from nltk import UnigramTagger
 
 parser = OptionParser(usage="usage: %prog [options] filename count")
 
@@ -33,6 +28,9 @@ parser.add_option("-k", "--known-states",
                   action="store_true", dest="known", default=False,
                   help="Use only the states from the training data, enforces smoothing")
 
+parser.add_option("-n", "--threshold", type="int", dest="num", default=0,
+                  help="Specify the number of best trellis states used fo generating the next stage (default is 10)")
+
 (options, args) = parser.parse_args()
 file_name = args[0]
 print('INFO: Processing the file "', file_name, '"')
@@ -42,6 +40,7 @@ if not unk:
 lex = options.lex
 oov = options.oov
 supervised = options.supervised
+threshold = options.num
 
 file = open(file_name, encoding="iso-8859-2", mode='rt')
 data = []
@@ -50,9 +49,9 @@ for line in file:
     data.append((w, t))
 
 dataT = data[:-40000]  # training data
-data_T = fix_sentence_boundaries(dataT)
+# data_T = fix_sentence_boundaries(dataT)
 dataH = data[-60000:-40000]  # held_out data
-data_H = fix_sentence_boundaries(dataH)
+# data_H = fix_sentence_boundaries(dataH)
 dataS = data[-40000:]  # testing data
 data_S = fix_sentence_boundaries(dataS)
 print('INFO:', len(data_S), 'testing sentences')
@@ -97,10 +96,14 @@ if oov:  # estimate unknown words by rare
         pwt = PwtUnknown(dataT, len(wordsetT), len(tagsetT))
         # because the distribution is not smoothed, we can speed things up by remembering tags
         # that yield non zero probability, i. e. the observed word/tag pairs
-        possible_tags = defaultdict(lambda: set())
+        possible_tags_tmp = defaultdict(lambda: set())
         for w, t in pwt.wt_counts.keys():
-            possible_tags[w].add(t)
-        possible_tags = defaultdict(lambda: defaultdict['@UNK'])
+            possible_tags_tmp[w].add(t)
+        default_set = possible_tags_tmp['@UNK']
+        possible_tags = defaultdict(lambda: default_set)
+        for w, t in pwt.wt_counts.keys():
+            possible_tags[w] = possible_tags_tmp[w]
+        del possible_tags_tmp
 
 
 
@@ -120,7 +123,13 @@ for x, y in zip([t for (_, t) in dataT], [t for (_, t) in dataT][1:]):
 total = 0
 correct = 0
 for sentence in data_S:
-    prediction = vite(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk, tags_dict=possible_tags)
+    if threshold:
+        print('INFO: Using prunning threshold', threshold)
+        prediction = viterbi_prunned(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk,
+                                     tags_dict=possible_tags, threshold=threshold)
+    else:
+        prediction = vite(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk,
+                          tags_dict=possible_tags)
     # at the beginning there should be two ###
     # at the end there should be two ~~~
     if prediction[0] != '###' and prediction[1] != '###':

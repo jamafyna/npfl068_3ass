@@ -354,3 +354,48 @@ def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_stat
     # print('---')
     tagged.reverse()
     return tagged
+
+
+def viterbi_prunned(sentence, tagset, emission_p, transition_p, possible_next, unknown_states=True, threshold=10,
+                    tags_dict=None):
+    # maximum probability in that state in time t = 0
+    alpha_t = Counter()
+    # deterministic, starting state is the only possible state
+    u = '###'
+    v = '###'
+    alpha_t[('###', '###')] = 1
+    alpha_new = Counter()  # use Counter, because defaultdict creates the element upon being touched
+    # back-track pointers
+    psi = defaultdict(lambda: ('###', '###'))
+    psi[(1, v)] = u
+    if unknown_states:
+        iteration_set = tagset
+    # iterate over the observations
+    for time in range(2, len(sentence)):
+        # iterate over all the previous trellis stage
+        for ((u, v), al) in alpha_t.most_common(threshold):
+            if alpha_t[u, v] > 0:
+                # consider all the possible next tags
+                if not unknown_states:
+                    iteration_set = possible_next[v]
+                if tags_dict:
+                    iteration_set = tags_dict[sentence[time][0]]
+                for w in iteration_set:
+                    # simulate transitions to w over the k-th observation
+                    q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], w)
+                    # if a better alpha to the state (v, w) from the previous trellis stage, remember the better one
+                    if q > alpha_new[v, w]:
+                        alpha_new[v, w] = q
+                        psi[(time, (v, w))] = (u, v)
+        # next trellis stage completly generated, now forget the old one
+        alpha_t = alpha_new
+        alpha_new = Counter()
+    last = ('###', '###')
+    tagged = [last[0], last[0]]
+    for i in range(len(sentence) - 1, 1, -1):
+        last = psi[i, last]
+        # print(last)
+        tagged.append(last[0])
+    # print('---')
+    tagged.reverse()
+    return tagged
