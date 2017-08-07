@@ -54,7 +54,7 @@ dataH = data[-60000:-40000]  # held_out data
 # data_H = fix_sentence_boundaries(dataH)
 dataS = data[-40000:]  # testing data
 data_S = fix_sentence_boundaries(dataS)
-print('INFO:', len(data_S), 'testing sentences')
+
 STARTw = '###'
 STARTt = '###'
 dataT = data[:-60000]  # training data
@@ -122,9 +122,11 @@ for x, y in zip([t for (_, t) in dataT], [t for (_, t) in dataT][1:]):
 
 total = 0
 correct = 0
+if threshold:
+    print('INFO: Using prunning threshold', threshold)
+print('INFO:', len(data_S), 'testing sentences')
 for sentence in data_S:
     if threshold:
-        print('INFO: Using prunning threshold', threshold)
         prediction = viterbi_prunned(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk,
                                      tags_dict=possible_tags, threshold=threshold)
     else:
