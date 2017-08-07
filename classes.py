@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 from sys import stdin as sin
 from sys import stdout as sout
 
@@ -70,15 +70,12 @@ class Pwt:
     Computes the initial distribution of p(w|t) and smooths it with add less than one smoothing
     """
 
-    # wt_counts = []
-    # t_counts = []
-    # vocab_size = 0
-
     def __init__(self, data, wordset_size, tagset_size):
         self.t_counts = Counter([t for (_, t) in data])
         # self.vocabulary = set([w for (w, _) in data])
         self.wt_counts = Counter(data)
         self.vocab_size = wordset_size * tagset_size
+        self.distribution = defaultdict(lambda: 0)
         # self.tagset_len = tagset_size
 
     # def get_smoothed_pwt(self, w, t, isOOV, lamb=2 ** (-10)):
@@ -101,7 +98,10 @@ class Pwt:
                 return 0
         # if w not in self.vocabulary:
         #     return lamb / (self.t_counts[t] + lamb * self.vocab_size)
-        return (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+        if (w, t) in self.distribution:
+            return self.distribution[w, t]
+        self.distribution[w, t] = (self.wt_counts[w, t] + lamb) / (self.t_counts[t] + lamb * self.vocab_size)
+        return self.distribution
 
 
 class PwtUnknown:
@@ -126,7 +126,7 @@ class PwtUnknown:
         self.vocab_size = wordset_size * tagset_size
         self.tagset_len = tagset_size
         self.hard_zeros = hard_zeros
-        self.distribution = Counter()
+        self.distribution = defaultdict(lambda: 0)
 
     def p(self, w, t):
         """

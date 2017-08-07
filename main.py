@@ -34,13 +34,13 @@ parser.add_option("-k", "--known-states",
                   help="Use only the states from the training data, enforces smoothing")
 
 (options, args) = parser.parse_args()
-file_name = args[0]
+file_name = 'data/texten2.ptg'  # args[0]
 print('INFO: Processing the file "', file_name, '"')
 unk = not options.known
 if not unk:
     print('INFO: Limiting the sates of states to the states from the training data')
 lex = options.lex
-oov = options.oov
+oov = True  # options.oov
 supervised = options.supervised
 
 file = open(file_name, encoding="iso-8859-2", mode='rt')
@@ -86,6 +86,7 @@ p, trig_tag_set = get_initial_parameters([t for w, t in dataT])
 tagsetT = set([t for (_, t) in dataT])  # set of tages
 wordsetT = set([w for (w, _) in dataT])  # set of words
 
+possible_tags = None
 if oov:  # estimate unknown words by rare
     print('INFO: Estimating distribution of unknown words from the rare words')
     if lex:  # smooth
@@ -94,6 +95,15 @@ if oov:  # estimate unknown words by rare
     else:  # do not smoot
         print('INFO: Using non-smoothed distribution')
         pwt = PwtUnknown(dataT, len(wordsetT), len(tagsetT))
+        # because the distribution is not smoothed, we can speed things up by remembering tags
+        # that yield non zero probability, i. e. the observed word/tag pairs
+        possible_tags = defaultdict(lambda: set())
+        for w, t in pwt.wt_counts.keys():
+            possible_tags[w].add(t)
+        possible_tags = defaultdict(lambda: defaultdict['@UNK'])
+
+
+
 else:
     print('INFO: All unknown words are the same')
     pwt = Pwt(dataT, len(wordsetT), len(tagsetT))
@@ -110,7 +120,7 @@ for x, y in zip([t for (_, t) in dataT], [t for (_, t) in dataT][1:]):
 total = 0
 correct = 0
 for sentence in data_S:
-    prediction = vite(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk)
+    prediction = vite(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk, tags_dict=possible_tags)
     # at the beginning there should be two ###
     # at the end there should be two ~~~
     if prediction[0] != '###' and prediction[1] != '###':

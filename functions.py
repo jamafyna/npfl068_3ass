@@ -309,7 +309,7 @@ def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=Tr
     return V[now][ends][1][2:], OOVcount  # only [2:] because of start tokens
 
 
-def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_states=True, threshold=0):
+def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_states=True, threshold=0, tags_dict=None):
     # maximum probability in that state in time t = 0
     alpha_t = defaultdict(lambda: 0)
     # deterministic, starting state is the only possible state
@@ -330,11 +330,16 @@ def vite(sentence, tagset, emission_p, transition_p, possible_next, unknown_stat
                 # consider all the possible next tags
                 if not unknown_states:
                     iteration_set = possible_next[v]
+                if tags_dict:
+                    iteration_set = tags_dict[sentence[time][0]]
                 for w in iteration_set:
                     # simulate transitions to w over the k-th observation
                     q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], w)
                     # if a better alpha to the state (v, w) from the previous trellis stage, remember the better one
-                    if q > alpha_new[v, w]:
+                    if (v, w) not in alpha_new:
+                        alpha_new[v, w] = q
+                        psi[(time, (v, w))] = (u, v)
+                    elif q > alpha_new[v, w]:
                         alpha_new[v, w] = q
                         psi[(time, (v, w))] = (u, v)
         # next trellis stage completly generated, now forget the old one
