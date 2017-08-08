@@ -52,6 +52,7 @@ for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
 
+# split the data
 if fold == 0:
     dataT = data[:-60000]  # training data
     dataH = data[-60000:-40000]  # held_out data
