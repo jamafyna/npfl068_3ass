@@ -57,21 +57,21 @@ if fold == 0:
     dataH = data[-60000:-40000]  # held_out data
     dataS = data[-40000:]  # testing data
 elif fold == 1:
-    dataT = data[:40000]  # training data
+    dataT = data[60000:]  # training data
     dataH = data[40000:60000]  # held_out data
-    dataS = data[60000:]  # testing data
+    dataS = data[:40000]  # testing data
 elif fold == 2:
-    dataT = data[80000:120000]  # training data
+    dataT = data[:60000] + data[120000:]  # training data
     dataH = data[60000:80000]  # held_out data
-    dataS = data[:60000] + data[120000:]  # testing data
+    dataS = data[80000:120000]  # testing data
 elif fold == 3:
-    dataT = data[120000:160000]  # training data
+    dataT = data[:120000] + data[180000:]  # training data
     dataH = data[160000:180000]  # held_out data
-    dataS = data[:120000] + data[180000:]  # testing data
+    dataS = data[120000:160000]  # testing data
 else:
-    dataT = data[40000:80000]  # training data
+    dataT = data[:40000] + data[100000:]  # training data
     dataH = data[80000:100000]  # held_out data
-    dataS = data[:40000] + data[100000:]  # testing data
+    dataS = data[40000:80000]  # testing data
 
 data_S = fix_sentence_boundaries(dataS)
 

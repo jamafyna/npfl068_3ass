@@ -49,14 +49,14 @@ Všeobecne platí, že väčšie množstvo pravidiel môže mierne zlepšiť pre
 \toprule
 \textbf{Angličtina} & \textbf{Přesnost} \\
 \midrule
-1. stupeň & 0.8910645842567726 \\
-2. stupeň & 0.88881069669247 \\
-3. stupeň & 0.8602301723689006 \\
-4. stupeň & 0.8931381232741104 \\
-5. stupeň & 0.8927185098345708 \\
+1. stupeň & 0.8909342163585638 \\
+2. stupeň & 0.8890974014126724 \\
+3. stupeň & 0.8747591522157996 \\
+4. stupeň & 0.8935028395769291 \\
+5. stupeň & 0.8925100950892275 \\
 \midrule
-Průměr   & 0.885192417285 \\
-$\sigma$ & 0.0125734981194 \\
+Průměr   & 0.888160740931 \\
+$\sigma$ & 0.00686479392893 \\
 \midrule
 Průmer triv. & 0.865374314735\\
 $\sigma$ triv. & 0.0143254860843 \\
@@ -86,8 +86,31 @@ $\sigma$ triv. & 0.0134321134672 \\
 
 \section*{Task 2}
 
+\subsection*{Supervizovaný HMM}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
+\textbf{Angličtina} & \textbf{Přesnost} \\
+\midrule
+1. stupeň & 0.9280369201887727 \\
+2. stupeň &  \\
+3. stupeň &  \\
+4. stupeň &  \\
+5. stupeň &  \\
+\midrule
+Průměr   &  \\
+$\sigma$ &  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \subsection*{Nesupervizovaný HMM --- Baum-Welch}
 
-Pre túto časť sme sa rozhodli použiť iba bigramové a unigramové štatistiky, pretože ak by sme nechceli použiť použiť nuly ``natvrdo'' zabralo by to príšerne veľa času pre angličtinu, pre češtinu by to bolo jednoducho nerealizovateľné, časovo ani pamäťovo.
+Pre túto časť sme sa rozhodli použiť ako stavy iba bigramy, ktoré sme videli v trénovacích dátach, pretože inak by bol počet stavov bol veľký.
+
+Navyše sme sa rozhodli použiť pruningovú metódu, aby sme tréning urýchlili.
+% Vysvetlenie metódy
 
 \end{document}

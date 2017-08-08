@@ -198,8 +198,8 @@ data = []
 for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
-dataT = [(STARTw, STARTt), (STARTw, STARTt)] + data[:-60000]  # training data
-dataH = [(STARTw, STARTt), (STARTw, STARTt)] + data[-60000:-40000]  # held_out data
+dataT = data[:-60000]  # training data
+dataH = data[-60000:-40000]  # held_out data
 dataS = data[-40000:]  # testing data
 # dataS = data[-400:]  # testing data
 if dataS[0] != [(STARTw, STARTt)]:
@@ -227,6 +227,7 @@ pwt = Pwt(dataT, len(wordsetT), len(tagsetT))
 # distribution of pairs (word,tag),smoothed
 
 pt = Ptt(pp, [t for (_, t) in dataH], [t for (_, t) in dataT], memory)
+ptt = LinearSmoothedDistribution(dataH, pp[0], pp[1], pp[2], pp[3])
 # pt = LinearSmoothedDistribution(dataH, pp[0], pp[1], pp[2], pp[3])
 # distrib. of tags, smoothed
 
@@ -247,6 +248,7 @@ elif fast:
 else:
     viterbialg = viterbi
 
+exit()
 for p in dataS:
     if p == (STARTw, STARTt):
         if (sentence != []):
