@@ -399,3 +399,34 @@ def viterbi_prunned(sentence, tagset, emission_p, transition_p, possible_next, u
     # print('---')
     tagged.reverse()
     return tagged
+
+
+def evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next_tags, threshold=20, unk=False, possible_tags=None):
+    total = 0
+    correct = 0
+    if threshold:
+        print('INFO: Using pruning threshold', threshold)
+    print('INFO:', len(data_S), 'testing sentences')
+    for sentence in data_S:
+        if threshold:
+            prediction = viterbi_prunned(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk,
+                                         tags_dict=possible_tags, threshold=threshold)
+        else:
+            prediction = vite(sentence, tagsetT, pwt, ptt, possible_next_tags, unknown_states=unk,
+                              tags_dict=possible_tags)
+        # at the beginning there should be two ###
+        # at the end there should be two ~~~
+        if prediction[0] != '###' and prediction[1] != '###':
+            print('ERROR: Something went horribly wrong')
+            continue
+        if prediction[-1] != '###' and prediction[-2] != '###':
+            print('ERROR: Something went horribly wrong')
+            continue
+        if len(prediction[-1]) != len(prediction[-2]):
+            print('ERROR: Something went horribly wrong')
+            continue
+        for i in range(2, len(prediction) - 2):
+            total += 1
+            if prediction[i] == sentence[i][1]:
+                correct += 1
+    print('INFO: accuracy without starting and ending tags:', correct / total)
