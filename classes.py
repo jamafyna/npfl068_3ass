@@ -126,6 +126,7 @@ class PwtUnknown:
         self.vocab_size = wordset_size * tagset_size
         self.tagset_len = tagset_size
         self.hard_zeros = hard_zeros
+        # this distribution can be accessed from the outside
         self.distribution = defaultdict(lambda: 0)
 
     def p(self, w, t):
@@ -172,8 +173,6 @@ class Ptt:
     Class for getting smoothed arc probability.  Do linear interpolation trigram smoothing, need estimated probabilities
     form train data, heldout data fo estimate lambdas and testing data.
     """
-    pl = {}
-    p_t_known = []
 
     def __init__(self, ps, heldout, train, less_memory=False):
         self.memory = less_memory

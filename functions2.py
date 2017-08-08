@@ -113,6 +113,8 @@ def baum_welch(transition_p, emission_p, training_data, graph_forward, graph_bac
                 for t in range(T):
                     e[state, obs] += alpha[state, t] + beta[state, t]
 
+    # Maximization step
+
     # normalize over the number of observations
     # use MLE for sentence distribution
     for dist in [c, d, e]:
