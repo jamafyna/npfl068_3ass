@@ -71,7 +71,7 @@ results.append(accuracy)
 # held-out is 60000-80000
 testing = data[80000:120000]
 testing_sentences = split_sentences(testing)
-training = data[:6000] + data[120000:]
+training = data[:60000] + data[120000:]
 training_sentences = split_sentences(training)
 tagger = train_brill_tagger(training_sentences, rules)
 accuracy = tagger.evaluate(testing_sentences)
