@@ -25,7 +25,7 @@ fold = options.fold
 unk = options.unknown
 threshold = 20
 file_name = args[0]  # 'data/texten2.ptg'
-dest = options.outputdir + basename(file_name)
+dest = options.outputdir + '/' + basename(file_name)
 print('INFO: Processing the file "', file_name, '"')
 
 file = open(file_name, encoding="iso-8859-2", mode='rt')
