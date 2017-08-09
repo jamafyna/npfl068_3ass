@@ -107,7 +107,8 @@ pwt.distribution['###', '###'] = 1
 # evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=threshold, unk=unk)
 
 # train the model
-e_p, t_p = baum_welch(ptt.distribution, my_pwt_distrib, data_T, possible_next, possible_prev, state_set, file=dest)
+e_p, t_p = baum_welch(ptt.distribution, my_pwt_distrib, data_T, possible_next, possible_prev, state_set, file=dest,
+                      fold=fold)
 
 # smooth the distributions
 
