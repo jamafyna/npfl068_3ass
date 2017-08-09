@@ -54,11 +54,11 @@ def compute_alpha(sentence, t, e, beta, possible_next):
             # for all the possible next states uv ~> vw
             # consider only states that survived the pruning in beta
             for w in possible_next[v]:
-                if (v, w) in beta[time]:
-                    # simulate transitions to w over the time-th observation
-                    qqq = alpha[time - 1][u, v] * t[u, v, w] * e[sentence[time], (v, w)]
-                    if qqq > 0:
-                        alpha[time][v, w] += qqq
+                # if (v, w) in beta[time]:
+                # simulate transitions to w over the time-th observation
+                qqq = alpha[time - 1][u, v] * t[u, v, w] * e[sentence[time], (v, w)]
+                if qqq > 0:
+                    alpha[time][v, w] += qqq
         # no need to prune, because we considered only the states that survived backward running
         # therefore there will be at most threshold number of elements
         # print('Q:', time, len(beta[time].keys()))
@@ -150,7 +150,7 @@ def baum_welch(transition_p, emission_p, training_data, graph_forward, graph_bac
         c = defaultdict(lambda: 0)
         d = defaultdict(lambda: 0)
         e = defaultdict(lambda: 0)
-        for sentence in training_data[:1]:
+        for sentence in training_data:
             T = len(sentence)
             # compute forward and backward probabilities
             # try:
