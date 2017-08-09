@@ -241,6 +241,25 @@ def fix_sentence_boundaries(data):
     return fixed_data
 
 
+def fix_sentence_boundaries_words(data):
+    # remove leading and final divisions
+    while data[0] == '###':
+        data.pop(0)
+    while data[-1] == '###':
+        data.pop()
+    fixed_data = []
+    sentence = []
+    for e in data:
+        if e != '###':
+            sentence.append(e)
+        else:
+            fixed_data.append(['###', '###'] + sentence + ['###', '###'])
+            sentence = []
+    if sentence:
+        fixed_data.append(['###', '###'] + sentence + ['###', '###'])
+    return fixed_data
+
+
 def viterbi(text, tagset, wordset, trigramtagset, Pwt, Ptt, start, usetrigram=True):
     """
     Assign the most probably tag sequence to a given sentence 'text'. Needs set of tags (tagset), vocabulary (wordset),
@@ -374,7 +393,7 @@ def viterbi_prunned(sentence, tagset, emission_p, transition_p, possible_next, u
     for time in range(2, len(sentence)):
         # iterate over all the previous trellis stage
         for ((u, v), al) in alpha_t.most_common(threshold):
-            if alpha_t[u, v] > 0:
+            if al > 0:
                 # consider all the possible next tags
                 if not unknown_states:
                     iteration_set = possible_next[v]
@@ -382,7 +401,10 @@ def viterbi_prunned(sentence, tagset, emission_p, transition_p, possible_next, u
                     iteration_set = tags_dict[sentence[time][0]]
                 for w in iteration_set:
                     # simulate transitions to w over the k-th observation
-                    q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], w)
+                    try:
+                        q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], w)
+                    except:
+                        print('@', sentence[time][0], w)
                     # if a better alpha to the state (v, w) from the previous trellis stage, remember the better one
                     if q > alpha_new[v, w]:
                         alpha_new[v, w] = q

@@ -28,7 +28,7 @@ parser.add_option("-k", "--known-states",
                   help="Use only the states from the training data, enforces smoothing")
 
 parser.add_option("-n", "--threshold", type="int", dest="num", default=None,
-                  help="Specify the number of best trellis states used fo generating the next stage (default is 10)")
+                  help="Specify the number of best trellis states used fo generating the next stage")
 
 parser.add_option("-f", "--fold", type="int", dest="fold", default=0,
                   help="Specify the number of fold")
