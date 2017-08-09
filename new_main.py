@@ -79,11 +79,15 @@ wordsetT = set([w for (w, _) in dataE])  # set of words
 #     state_set.add((tag, '###'))
 #     state_set.add(('###', tag))
 # organize them into dictionaries
-possible_next = defaultdict(lambda: set())
-possible_prev = defaultdict(lambda: set())
-for u, v in state_set:
-    possible_next[u].add(v)
-    possible_prev[v].add(u)
+if unk:
+    possible_next = defaultdict(lambda: tagsetT)
+    possible_prev = defaultdict(lambda: tagsetT)
+else:
+    possible_next = defaultdict(lambda: set())
+    possible_prev = defaultdict(lambda: set())
+    for u, v in state_set:
+        possible_next[u].add(v)
+        possible_prev[v].add(u)
 
 pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
 ptt = Ptt(p, [t for (_, t) in dataH], None)
@@ -99,7 +103,6 @@ for u, v in state_set:
         ptt.p(u, v, w)
 pwt.distribution['###', '###'] = 1
 
-unk = False
 # guesstimate the accuracy before the training
 # evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=threshold, unk=unk)
 
