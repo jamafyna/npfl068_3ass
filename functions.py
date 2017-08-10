@@ -406,7 +406,7 @@ def viterbi_prunned_modified(sentence, tagset, emission_p, transition_p, possibl
         # next trellis stage completly generated, now forget the old one
         alpha_t = alpha_new
         alpha_new = Counter()
-    last = ('###', '###')
+    last = alpha_t.most_common(1)[0][0]  # ('###', '###')
     tagged = [last[0], last[0]]
     for i in range(len(sentence) - 1, 1, -1):
         last = psi[i, last]
