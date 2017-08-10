@@ -8,7 +8,7 @@ from functions import get_initial_parameters, fix_sentence_boundaries, evaluate_
 from functions2 import baum_welch
 from classes import Pwt, Ptt, PttModified, PwtModified
 
-parser = OptionParser(usage="usage: %prog [options] filename count")
+parser = OptionParser(usage="usage: %prog [options] filename [transition probability file] [emission probability file]")
 
 parser.add_option("-f", "--fold", type="int", dest="fold", default=0,
                   help="Specify the number of fold")
@@ -121,7 +121,7 @@ else:
         possible_prev[v].add(u)
 
 pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
-ptt = Ptt(p, [t for (_, t) in dataH], None)
+ptt = Ptt(p, [t for (_, t) in dataH])
 my_pwt_distrib = defaultdict(lambda: 0)
 
 # touch all the training data so that the probabilities are precomputed
