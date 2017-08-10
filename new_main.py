@@ -17,7 +17,7 @@ parser.add_option("-u", "--unknown-states",
                   help="Use only the states from the training data, enforces smoothing")
 
 parser.add_option("-o", "--output",
-                  type="string", dest="outputdir", default="data",
+                  type="string", dest="outputdir", default="/a/LRC_TMP/gloncak",
                   help="Use only the states from the training data, enforces smoothing")
 
 (options, args) = parser.parse_args()
