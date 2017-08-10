@@ -92,6 +92,56 @@ $\sigma$ triv. & 0.0134321134672 \\
 \centering
 \begin{tabular}{ll}
 \toprule
+\textbf{Metóda} & \textbf{Čas} & \textbf{Přesnost} \\
+\midrule
+Žiadny pruning, add lambda & 7h 24m 22s  & 0.9252470471671056
+
+Nevyhladený OOV model & 2m 34s & 0.9268375355252523
+
+Smoothed GT
+5h35m13s 0.9280369201887727
+
+Limiting states, GT
+1:12:24 0.927802257971997
+
+Limiting states, lambda
+1:23:32 0.9250123849503298
+
+-ol -n 10
+1m53s 0.9279847730294892
+-ol -n 20
+3m45s 0.9280369201887727
+
+2727616 -kol -n 10
+01m07s 0.9277240372330717
+\bottomrule
+\end{tabular}
+\hskip 50pt
+\begin{tabular}{ll}
+\toprule
+\textbf {Čeština} & \textbf{Přesnost} \\
+\midrule
+1. stupeň & 0.7743503905627291 \\
+2. stupeň & 0.7887507306445614 \\
+3. stupeň & 0.7618758256274769 \\
+4. stupeň & 0.7919649224755012 \\
+5. stupeň & 0.7880596223212392 \\
+\midrule
+Průměr   & 0.781000298326 \\
+$\sigma$ & 0.0113145302014 \\
+\midrule
+Průmer triv. & 0.738888267001\\
+$\sigma$ triv. & 0.0134321134672 \\
+\bottomrule
+\end{tabular}
+\caption{Přesnost (accuracy) pro Brillův tagger pro oba jazyky.}
+\label{eng_big}
+\end{table}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{ll}
+\toprule
 \textbf{Angličtina} & \textbf{Přesnost} \\
 \midrule
 1. stupeň & 0.9280369201887727 \\

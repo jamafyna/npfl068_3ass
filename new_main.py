@@ -113,24 +113,24 @@ else:
     for u, v in state_set:
         possible_next[u].add(v)
         possible_prev[v].add(u)
-
-pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
-ptt = Ptt(p, [t for (_, t) in dataH], None)
-my_pwt_distrib = defaultdict(lambda: 0)
-
-# touch all the training data so that the probabilities are precomputed
-for word in set(dataT):
-    for s in state_set:
-        my_pwt_distrib[word, s] = pwt.p(word, s[1])
-
-for u, v in state_set:
-    for w in possible_next[v]:
-        ptt.p(u, v, w)
-pwt.distribution['###', '###'] = 1
+#
+# pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
+# ptt = Ptt(p, [t for (_, t) in dataH], None)
+# my_pwt_distrib = defaultdict(lambda: 0)
+#
+# # touch all the training data so that the probabilities are precomputed
+# for word in set(dataT):
+#     for s in state_set:
+#         my_pwt_distrib[word, s] = pwt.p(word, s[1])
+#
+# for u, v in state_set:
+#     for w in possible_next[v]:
+#         ptt.p(u, v, w)
+# pwt.distribution['###', '###'] = 1
 
 if evaluate:
     # guesstimate the accuracy before the training
-    evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=10, unk=unk)
+    # evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=10, unk=unk)
     # load the distributions from the dill files
     ptt = dill.load(open(args[1], 'rb'))
     trans = PttModified(ptt, state_set, possible_next)

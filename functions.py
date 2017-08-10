@@ -450,10 +450,7 @@ def viterbi_prunned_modified(sentence, tagset, emission_p, transition_p, possibl
                     iteration_set = tags_dict[sentence[time][0]]
                 for w in iteration_set:
                     # simulate transitions to w over the k-th observation
-                    try:
-                        q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], (v, w))
-                    except:
-                        print('@', sentence[time][0], w)
+                    q = alpha_t[u, v] * transition_p.p(u, v, w) * emission_p.p(sentence[time][0], (v, w))
                     # if a better alpha to the state (v, w) from the previous trellis stage, remember the better one
                     if q > alpha_new[v, w]:
                         alpha_new[v, w] = q

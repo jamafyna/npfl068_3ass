@@ -283,11 +283,6 @@ class PttModified:
     def p(self, u, v, w):
         # this last transition is just a fake transition so that we don't have to
         # compute maximum
-        if v == '###':
-            if w == '###':
-                return 1
-            else:
-                return 0
         # we have precomputed all the possible transitions
         return self.dist[u, v, w]
 
@@ -295,7 +290,7 @@ class PttModified:
 class PwtModified:
     def __init__(self, initial_distribution, state_counts, vocab_size):
         self.vocab_size = vocab_size
-        self.init_disrt = initial_distribution
+        self.init_dist = initial_distribution
         self.state_counts = state_counts
         self.dist = defaultdict(lambda: 0)
 
@@ -305,11 +300,11 @@ class PwtModified:
         #         return 1
         #     else:
         #         return 0
-        if (word, state) in self.dist:
-            return self.dist[word, state]
+        if (word, state) in self.init_dist:
+            return self.init_dist[word, state]
         else:
             # precompute the value and store it
-            # qqq = (self.init_disrt[word, state] * self.state_counts[state] + lamb) / (
+            # qqq = (self.init_dist[word, state] * self.state_counts[state] + lamb) / (
             #     self.state_counts[state] + lamb * self.vocab_size)
             # self.dist[word, state] = qqq
             return lamb
