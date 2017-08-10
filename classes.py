@@ -283,11 +283,11 @@ class PttModified:
     def p(self, u, v, w):
         # this last transition is just a fake transition so that we don't have to
         # compute maximum
-        if v == '###':
-            if w == '###':
-                return 1
-            else:
-                return 0
+        # if v == '###':
+        #     if w == '###':
+        #         return 1
+        #     else:
+        #         return 0
         # we have precomputed all the possible transitions
         return self.dist[u, v, w]
 
@@ -300,11 +300,11 @@ class PwtModified:
         self.dist = defaultdict(lambda: 0)
 
     def p(self, word, state, lamb=2 ** (-10)):
-        if word == '###':
-            if state[1] == '###':
-                return 1
-            else:
-                return 0
+        # if word == '###':
+        #     if state[1] == '###':
+        #         return 1
+        #     else:
+        #         return 0
         if (word, state) in self.dist:
             return self.dist[word, state]
         else:
