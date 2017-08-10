@@ -37,14 +37,34 @@ for line in file:
     w, t = line.strip().split(sep='/', maxsplit=1)
     data.append((w, t))
 
-dataE = data[:10000]  # data for estimating the raw probabilities
+# split the data
+if fold == 0:
+    dataT = data[:-60000]  # training data
+    dataH = data[-60000:-40000]  # held_out data
+    dataS = data[-40000:]  # testing data
+elif fold == 1:
+    dataT = data[60000:]  # training data
+    dataH = data[40000:60000]  # held_out data
+    dataS = data[:40000]  # testing data
+elif fold == 2:
+    dataT = data[:60000] + data[120000:]  # training data
+    dataH = data[60000:80000]  # held_out data
+    dataS = data[80000:120000]  # testing data
+elif fold == 3:
+    dataT = data[:120000] + data[180000:]  # training data
+    dataH = data[160000:180000]  # held_out data
+    dataS = data[120000:160000]  # testing data
+else:
+    dataT = data[:40000] + data[100000:]  # training data
+    dataH = data[80000:100000]  # held_out data
+    dataS = data[40000:80000]  # testing data
+
+dataE = dataT[:10000]  # data for estimating the raw probabilities
 # strip off the tags from the remaining data
-dataT = [w for w, _ in data[10000:-60000]]  # training data
+dataT = [w for w, _ in dataT[10000:]]  # training data
 data_T = fix_sentence_boundaries_words(dataT)
 print('INFO:', len(data_T), 'training sentences')
 
-dataH = data[-60000:-40000]  # held_out data
-dataS = data[-40000:]  # testing data
 data_S = fix_sentence_boundaries(dataS)
 print('INFO:', len(data_S), 'testing sentences')
 # double separators in estimation data set
