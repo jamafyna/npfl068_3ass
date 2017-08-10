@@ -109,17 +109,22 @@ OOV model, prunning 20 & 3m 45s & 0.9280369201887727\\
 
 \begin{table}[H]
 \centering
-\begin{tabular}{lll}
+\begin{tabular}{lrll}
 \toprule
-\textbf{Metóda} & \textbf{Čas} & \textbf{Přesnost} \\
+\textbf{Metóda} & \textbf{Pruning} & \textbf{Čas} & \textbf{Přesnost} \\
 \midrule
-Žiadny pruning, add $\lambda$ & 7h 24m 22s  & 0.9252470471671056\\
-Nevyhladený OOV model & 1m 34s & 0.9268375355252523\\
-Vyhladený OOV model & 5h 35m 13s  & 0.9280369201887727\\
-OOV a obmedzené stavy & 1h 12m 24s & 0.927802257971997\\
-Add $\lambda$ a obmedzené stavy & 1h 23m 32s & 0.9250123849503298\\
-OOV model, prunning 10 & 1m 53s & 0.9279847730294892\\
-OOV model, prunning 10 & 3m 45s & 0.9280369201887727\\
+Všetky stavy, add $\lambda$ & 2 & 19m17.624s & 0.7809926138477071\\
+& 10 & 5h06m57s & 0.793984802593124\\
+& 20 & 13h57m08s & 0.7988734789308677\\
+\midrule
+Obmedzené stavy, add $\lambda$ &2 & 3m22.020s &0.7676018917051916\\
+&10& 13m48.912s& 0.7856953079334715\\
+&20& 40m57.140s& 0.791274775492853\\
+&30& 1h04m21s &0.7928423401881077\\
+\midrule
+Obmedzené stavy, OOV &2& 2m44.652s &0.7425208565811149\\
+&10& 13m12.636s &0.7610393750996334\\
+&20& 33m44.748s &0.7655029491471386\\
 \bottomrule
 \end{tabular}
 \caption{Přesnost (accuracy) pro různé metody pro češtinu.}

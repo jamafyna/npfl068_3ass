@@ -283,11 +283,6 @@ class PttModified:
     def p(self, u, v, w):
         # this last transition is just a fake transition so that we don't have to
         # compute maximum
-        if v == '###':
-            if w == '###':
-                return 1
-            else:
-                return 0
         # we have precomputed all the possible transitions
         return self.dist[u, v, w]
 
