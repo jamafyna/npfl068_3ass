@@ -2,10 +2,11 @@
 from collections import defaultdict
 from optparse import OptionParser
 from os.path import basename
+import dill
 
 from functions import get_initial_parameters, fix_sentence_boundaries, evaluate_test_data, fix_sentence_boundaries_words
 from functions2 import baum_welch
-from classes import Pwt, Ptt
+from classes import Pwt, Ptt, PttModified, PwtModified
 
 parser = OptionParser(usage="usage: %prog [options] filename count")
 
@@ -20,9 +21,14 @@ parser.add_option("-o", "--output",
                   type="string", dest="outputdir", default="/a/LRC_TMP/gloncak",
                   help="Use only the states from the training data, enforces smoothing")
 
+parser.add_option("-e", "--evaluate",
+                  action="store_true", dest="evaluate", default=False,
+                  help="Option used for evaluating the data")
+
 (options, args) = parser.parse_args()
 fold = options.fold
 unk = options.unknown
+evaluate = True  # options.evaluate
 threshold = 20
 file_name = args[0]  # 'data/texten2.ptg'
 if unk:
@@ -60,6 +66,8 @@ else:
     dataS = data[40000:80000]  # testing data
 
 dataE = dataT[:10000]  # data for estimating the raw probabilities
+# guesstimate the size of the vocabulary
+vocab_size = len(set([w for w, t in dataT]))
 # strip off the tags from the remaining data
 dataT = [w for w, _ in dataT[10000:]]  # training data
 data_T = fix_sentence_boundaries_words(dataT)
@@ -94,10 +102,7 @@ state_set = set(zip(guess_tags, guess_tags[1:]))
 
 tagsetT = set([t for (_, t) in dataE])  # set of tags
 wordsetT = set([w for (w, _) in dataE])  # set of words
-# expand states to not ban any beginning
-# for tag in tagsetT:
-#     state_set.add((tag, '###'))
-#     state_set.add(('###', tag))
+
 # organize them into dictionaries
 if unk:
     possible_next = defaultdict(lambda: tagsetT)
@@ -123,12 +128,24 @@ for u, v in state_set:
         ptt.p(u, v, w)
 pwt.distribution['###', '###'] = 1
 
-# guesstimate the accuracy before the training
-# evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=threshold, unk=unk)
+if evaluate:
+    # guesstimate the accuracy before the training
+    evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=10, unk=unk)
+    # load the distributions from the dill files
+    ptt = dill.load(open(args[1], 'rb'))
+    trans = PttModified(ptt, state_set, possible_next)
+    pwt = dill.load(open(args[2], 'rb'))
+    state_counts = defaultdict(lambda: 0)
+    for s in list(zip(guess_tags, guess_tags[1:])):
+        state_counts[s] += 1
+    emit = PwtModified(pwt, state_counts, vocab_size)
+    evaluate_test_data(data_S, tagsetT, emit, trans, possible_next, threshold=10, modified=True)
+    # smooth the distributions
+    print('Evaluate')
 
-# train the model
-e_p, t_p = baum_welch(ptt.distribution, my_pwt_distrib, data_T, possible_next, possible_prev, state_set, file=dest,
-                      fold=fold)
+else:  # train the model
+    e_p, t_p = baum_welch(ptt.distribution, my_pwt_distrib, data_T, possible_next, possible_prev, state_set, file=dest,
+                          fold=fold)
 
 # smooth the distributions
 

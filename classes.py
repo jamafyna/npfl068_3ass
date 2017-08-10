@@ -262,3 +262,43 @@ class Ptt:
             itercount = itercount + 1
         print("INFO: EM converged in", str(itercount), "iterations with convergence criterion", str(e))
         return nextl
+
+
+class PttModified:
+    def __init__(self, initial_distribution, state_set, possible_next):
+        self.init_disrt = initial_distribution
+        self.dist = defaultdict(lambda: 0)
+        self.smooth_distribution(state_set, possible_next)
+
+    def smooth_distribution(self, state_set, possible_next, lamb=2 ** (-10)):
+        for state in state_set:
+            suma = 0
+            # add lambda to every transition and then normalize it
+            for v in possible_next[state[1]]:
+                suma += self.init_disrt[state[0], state[1], v] + lamb
+            # normalize all the transitions
+            for v in possible_next[state[1]]:
+                self.dist[state[0], state[1], v] = (self.init_disrt[state[0], state[1], v] + lamb) / suma
+
+    def p(self, u, v, w):
+        # we have precomputed all the possible transitions
+        return self.dist[u, v, w]
+
+
+class PwtModified:
+    def __init__(self, initial_distribution, state_counts, vocab_size):
+        self.vocab_size = vocab_size
+        self.init_disrt = initial_distribution
+        self.state_counts = state_counts
+        self.dist = defaultdict(lambda: 0)
+
+    def p(self, word, state, lamb=2 ** (-10)):
+
+        if (word, state) in self.dist:
+            return self.dist[word, state]
+        else:
+            # precompute the value and store it
+            qqq = (self.init_disrt[word, state] * self.state_counts[state] + lamb) / (
+                self.state_counts[state] + lamb * self.vocab_size)
+            self.dist[word, state] = qqq
+            return qqq
