@@ -268,7 +268,7 @@ class PttModified:
     def __init__(self, initial_distribution, state_set, possible_next):
         self.init_disrt = initial_distribution
         self.dist = defaultdict(lambda: 0)
-        # self.smooth_distribution(state_set, possible_next)
+        self.smooth_distribution(state_set, possible_next)
 
     def smooth_distribution(self, state_set, possible_next, lamb=2 ** (-10)):
         for state in state_set:
