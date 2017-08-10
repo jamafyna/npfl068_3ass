@@ -295,11 +295,6 @@ class PwtModified:
         self.dist = defaultdict(lambda: 0)
 
     def p(self, word, state, lamb=2 ** (-10)):
-        if word == '###':
-            if state[1] == '###':
-                return 1
-            else:
-                return 0
         if (word, state) in self.dist:
             return self.dist[word, state]
         else:
