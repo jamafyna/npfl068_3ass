@@ -28,7 +28,7 @@ parser.add_option("-e", "--evaluate",
 (options, args) = parser.parse_args()
 fold = options.fold
 unk = options.unknown
-evaluate = True  # options.evaluate
+evaluate = options.evaluate
 threshold = 20
 file_name = args[0]  # 'data/texten2.ptg'
 if unk:
@@ -139,7 +139,7 @@ if evaluate:
     for s in list(zip(guess_tags, guess_tags[1:])):
         state_counts[s] += 1
     emit = PwtModified(pwt, state_counts, vocab_size)
-    evaluate_test_data(data_S, tagsetT, emit, trans, possible_next, threshold=10, modified=True)
+    evaluate_test_data(data_S, tagsetT, emit, trans, possible_next, threshold=10, modified=True, unk=unk)
     # smooth the distributions
     print('Evaluate')
 
