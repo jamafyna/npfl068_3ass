@@ -309,7 +309,7 @@ class PwtModified:
             return self.dist[word, state]
         else:
             # precompute the value and store it
-            qqq = (self.init_disrt[word, state] * self.state_counts[state] + lamb) / (
-                self.state_counts[state] + lamb * self.vocab_size)
-            self.dist[word, state] = qqq
-            return qqq
+            # qqq = (self.init_disrt[word, state] * self.state_counts[state] + lamb) / (
+            #     self.state_counts[state] + lamb * self.vocab_size)
+            # self.dist[word, state] = qqq
+            return lamb

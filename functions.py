@@ -439,7 +439,7 @@ def viterbi_prunned_modified(sentence, tagset, emission_p, transition_p, possibl
     if unknown_states:
         iteration_set = tagset
     # iterate over the observations
-    for time in range(2, len(sentence)):
+    for time in range(2, len(sentence) - 3):
         # iterate over all the previous trellis stage
         for ((u, v), al) in alpha_t.most_common(threshold):
             if al > 0:
@@ -461,8 +461,8 @@ def viterbi_prunned_modified(sentence, tagset, emission_p, transition_p, possibl
         # next trellis stage completly generated, now forget the old one
         alpha_t = alpha_new
         alpha_new = Counter()
-    last = ('###', '###')
-    tagged = [last[0], last[0]]
+    last = alpha_t.most_common(1)[0][0]  # ('###', '###')
+    tagged = ['###', '###']
     for i in range(len(sentence) - 1, 1, -1):
         last = psi[i, last]
         # print(last)
