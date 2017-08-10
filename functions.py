@@ -439,7 +439,7 @@ def viterbi_prunned_modified(sentence, tagset, emission_p, transition_p, possibl
     if unknown_states:
         iteration_set = tagset
     # iterate over the observations
-    for time in range(2, len(sentence) - 2):
+    for time in range(2, len(sentence)):
         # iterate over all the previous trellis stage
         for ((u, v), al) in alpha_t.most_common(threshold):
             if al > 0:
