@@ -13,12 +13,15 @@ parser = OptionParser(usage="usage: %prog [options] filename count")
 parser.add_option("-f", "--fold", type="int", dest="fold", default=0,
                   help="Specify the number of fold")
 
+parser.add_option("-t", "--threshold", type="int", dest="threshold", default=10,
+                  help="Specify the threshold for evaluation pruning")
+
 parser.add_option("-u", "--unknown-states",
                   action="store_true", dest="unknown", default=False,
                   help="Use only the states from the training data, enforces smoothing")
 
 parser.add_option("-o", "--output",
-                  type="string", dest="outputdir", default="/a/LRC_TMP/gloncak",
+                  type="string", dest="outputdir", default=".",
                   help="Use only the states from the training data, enforces smoothing")
 
 parser.add_option("-e", "--evaluate",
@@ -30,7 +33,7 @@ fold = options.fold
 unk = options.unknown
 evaluate = options.evaluate
 threshold = 20
-file_name = args[0]  # 'data/texten2.ptg'
+file_name = args[0]
 if unk:
     dest = options.outputdir + '/' + basename(file_name) + 'full'
 else:
@@ -96,12 +99,15 @@ dataH = new
 
 # estimate the raw parameters and smooth them
 p, trig_tag_set = get_initial_parameters([t for w, t in dataE])
-guess_tags = [t for (_, t) in dataE]
-# extract the states from the data --- only the seen bigrams
-state_set = set(zip(guess_tags, guess_tags[1:]))
-
+# find states
 tagsetT = set([t for (_, t) in dataE])  # set of tags
 wordsetT = set([w for (w, _) in dataE])  # set of words
+if unk:
+    state_set = [(x, y) for x in tagsetT for y in tagsetT]
+else:
+    # extract the states from the data --- only the seen bigrams
+    guess_tags = [t for (_, t) in dataE]
+    state_set = set(zip(guess_tags, guess_tags[1:]))
 
 # organize them into dictionaries
 if unk:
@@ -113,24 +119,24 @@ else:
     for u, v in state_set:
         possible_next[u].add(v)
         possible_prev[v].add(u)
-#
-# pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
-# ptt = Ptt(p, [t for (_, t) in dataH], None)
-# my_pwt_distrib = defaultdict(lambda: 0)
-#
-# # touch all the training data so that the probabilities are precomputed
-# for word in set(dataT):
-#     for s in state_set:
-#         my_pwt_distrib[word, s] = pwt.p(word, s[1])
-#
-# for u, v in state_set:
-#     for w in possible_next[v]:
-#         ptt.p(u, v, w)
-# pwt.distribution['###', '###'] = 1
+
+pwt = Pwt(dataE, len(wordsetT), len(tagsetT))
+ptt = Ptt(p, [t for (_, t) in dataH], None)
+my_pwt_distrib = defaultdict(lambda: 0)
+
+# touch all the training data so that the probabilities are precomputed
+for word in set(dataT):
+    for s in state_set:
+        my_pwt_distrib[word, s] = pwt.p(word, s[1])
+
+for u, v in state_set:
+    for w in possible_next[v]:
+        ptt.p(u, v, w)
+pwt.distribution['###', '###'] = 1
 
 if evaluate:
     # guesstimate the accuracy before the training
-    # evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=10, unk=unk)
+    evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=10, unk=unk)
     # load the distributions from the dill files
     ptt = dill.load(open(args[1], 'rb'))
     trans = PttModified(ptt, state_set, possible_next)
@@ -146,9 +152,3 @@ if evaluate:
 else:  # train the model
     e_p, t_p = baum_welch(ptt.distribution, my_pwt_distrib, data_T, possible_next, possible_prev, state_set, file=dest,
                           fold=fold)
-
-# smooth the distributions
-
-
-# estimate the accuracy after training
-# evaluate_test_data(data_S, tagsetT, pwt, ptt, possible_next, threshold=threshold, unk=unk)
